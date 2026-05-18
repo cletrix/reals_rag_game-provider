@@ -1,6 +1,9 @@
 qdrant_data/
 data/raw/
+data/indexed.json
+data/embed_speed.json
 __pycache__/
 *.pyc
 .env
 .venv/
+.DS_Store
