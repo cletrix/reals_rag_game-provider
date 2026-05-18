@@ -1,0 +1,33 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: landf_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 2 bash -c '</dev/tcp/localhost/6333' && echo ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rag:
+    build: ./app
+    container_name: landf_rag
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./rag:/app/rag
+      - ./app/ingest.py:/app/ingest.py
+      - ./app/query.py:/app/query.py
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    stdin_open: true
+    tty: true
+    command: python query.py

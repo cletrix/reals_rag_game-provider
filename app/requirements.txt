@@ -1,0 +1,7 @@
+llama-index>=0.11
+llama-index-llms-ollama
+llama-index-llms-groq
+llama-index-embeddings-ollama
+llama-index-vector-stores-qdrant
+qdrant-client
+python-dotenv

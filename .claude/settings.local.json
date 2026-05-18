@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unzip -q /Users/cleyton/Dev/reals/reals_rag_game-provider/rag-ollama-docker.skill)",
+      "Bash(unzip -o /Users/cleyton/Dev/reals/reals_rag_game-provider/rag-ollama-docker.skill -d skill_content)",
+      "Bash(mkdir -p /Users/cleyton/Dev/LandF/landf_rag/.claude/skills)",
+      "Bash(cp /Users/cleyton/Dev/reals/reals_rag_game-provider/rag-ollama-docker.skill /Users/cleyton/Dev/LandF/landf_rag/.claude/skills/)",
+      "Bash(chmod +x /Users/cleyton/Dev/reals/reals_rag_game-provider/chat.sh)",
+      "Bash(zip -r /Users/cleyton/Dev/reals/reals_rag_game-provider/docs/rag-local-groq.skill rag-local-groq/)",
+      "Bash(rm /Users/cleyton/Dev/reals/reals_rag_game-provider/rag-ollama-docker.skill)",
+      "Bash(ls /Users/cleyton/Dev/reals/reals_rag_game-provider/*.skill)"
+    ]
+  }
+}
