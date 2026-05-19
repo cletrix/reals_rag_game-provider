@@ -377,8 +377,11 @@
         <div>
           <h2 class="font-semibold text-sm">Documentos</h2>
           <p class="text-xs text-gray-500 mt-0.5">
-            <span x-text="docFiles.filter(f => f.indexed).length"></span> indexados ·
-            <span x-text="docFiles.filter(f => !f.indexed).length"></span> pendentes
+            <span x-text="docFiles.filter(f => f.indexed && f.enabled).length"></span> indexados ·
+            <span x-text="docFiles.filter(f => !f.indexed && f.enabled).length"></span> pendentes
+            <template x-if="docFiles.filter(f => !f.enabled).length > 0">
+              <span> · <span x-text="docFiles.filter(f => !f.enabled).length"></span> desabilitados</span>
+            </template>
           </p>
         </div>
         <button @click="docsOpen = false" class="text-gray-400 hover:text-gray-200 transition-colors">
@@ -443,24 +446,63 @@
 
         <ul class="space-y-1.5">
           <template x-for="f in docFiles" :key="f.path">
-            <li class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800/60">
+            <li class="flex items-center gap-2 px-3 py-2.5 rounded-lg transition-colors"
+                :class="f.enabled ? 'bg-gray-800/60' : 'bg-gray-800/25'">
+
               <!-- ícone por extensão -->
-              <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-xs font-bold"
-                   :class="f.name.endsWith('.pdf') ? 'bg-red-900/40 text-red-400' : f.name.endsWith('.md') ? 'bg-blue-900/40 text-blue-400' : 'bg-gray-700 text-gray-400'">
+              <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-xs font-bold transition-opacity"
+                   :class="[f.name.endsWith('.pdf') ? 'bg-red-900/40 text-red-400' : f.name.endsWith('.md') ? 'bg-blue-900/40 text-blue-400' : 'bg-gray-700 text-gray-400', f.enabled ? '' : 'opacity-40']">
                 <span x-text="f.name.endsWith('.pdf') ? 'PDF' : f.name.endsWith('.md') ? 'MD' : 'TXT'"></span>
               </div>
+
+              <!-- nome + tamanho -->
               <div class="flex-1 min-w-0">
-                <p class="text-sm text-gray-200 truncate" x-text="f.name"></p>
-                <p class="text-xs text-gray-500" x-text="f.size_kb + ' KB'"></p>
+                <p class="text-sm truncate transition-colors"
+                   :class="f.enabled ? 'text-gray-200' : 'text-gray-500 line-through'"
+                   x-text="f.name"></p>
+                <p class="text-xs text-gray-600" x-text="f.size_kb + ' KB'"></p>
               </div>
-              <!-- status -->
-              <div x-show="f.indexed" class="flex items-center gap-1 text-xs text-green-400 shrink-0">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                </svg>
-                indexado
+
+              <!-- status badge -->
+              <div class="flex items-center gap-2 shrink-0">
+                <span x-show="f.indexed && f.enabled"
+                      class="text-xs text-green-400 flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  indexado
+                </span>
+                <span x-show="!f.indexed && f.enabled"
+                      class="text-xs text-yellow-500">pendente</span>
+                <span x-show="!f.enabled"
+                      class="text-xs text-gray-600">desabilitado</span>
+
+                <!-- toggle chave (apenas arquivos indexados ou desabilitados) -->
+                <button x-show="f.indexed || !f.enabled"
+                        @click="toggleFile(f)"
+                        :disabled="togglingFile === f.name"
+                        :title="f.enabled ? 'Desabilitar (remove vetores do Qdrant)' : 'Habilitar (re-indexar)'"
+                        class="relative inline-flex w-9 h-5 rounded-full transition-colors focus:outline-none disabled:opacity-50 shrink-0"
+                        :class="f.enabled ? 'bg-blue-600' : 'bg-gray-700'">
+                  <span class="inline-block w-4 h-4 mt-0.5 rounded-full bg-white shadow transition-transform"
+                        :class="f.enabled ? 'translate-x-4' : 'translate-x-0.5'"></span>
+                </button>
+
+                <!-- botão deletar -->
+                <button @click="confirmDelete(f)"
+                        :disabled="deletingFile === f.name"
+                        title="Remover arquivo permanentemente"
+                        class="p-1 text-gray-600 hover:text-red-400 transition-colors rounded disabled:opacity-50">
+                  <svg x-show="deletingFile !== f.name" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                  <svg x-show="deletingFile === f.name" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                </button>
               </div>
-              <div x-show="!f.indexed" class="text-xs text-yellow-500 shrink-0">pendente</div>
             </li>
           </template>
         </ul>
@@ -531,6 +573,8 @@
         uploadStatus: null,
         indexStatus: { running: false, status: 'idle', message: '', progress_pct: 0, total_chunks: 0, done_chunks: 0 },
         showIndexDone: false,
+        togglingFile: null,
+        deletingFile: null,
         _pollTimer: null,
 
         async init() {
@@ -787,6 +831,37 @@
               setTimeout(() => { this.showIndexDone = false; }, 6000);
             }
           } catch (_) {}
+        },
+
+        async toggleFile(f) {
+          this.togglingFile = f.name;
+          try {
+            const r = await fetch(`/api/files/${encodeURIComponent(f.name)}/toggle`, { method: 'POST' });
+            if (r.ok) await this.loadDocFiles();
+          } catch (e) {
+            console.error('Erro ao alternar arquivo:', e);
+          } finally {
+            this.togglingFile = null;
+          }
+        },
+
+        confirmDelete(f) {
+          const label = f.indexed ? `"${f.name}" e todos os seus vetores no Qdrant` : `"${f.name}"`;
+          if (confirm(`Remover ${label} permanentemente?\n\nEsta ação não pode ser desfeita.`)) {
+            this.deleteFile(f);
+          }
+        },
+
+        async deleteFile(f) {
+          this.deletingFile = f.name;
+          try {
+            const r = await fetch(`/api/files/${encodeURIComponent(f.name)}`, { method: 'DELETE' });
+            if (r.ok) await this.loadDocFiles();
+          } catch (e) {
+            console.error('Erro ao deletar arquivo:', e);
+          } finally {
+            this.deletingFile = null;
+          }
         },
       };
     }

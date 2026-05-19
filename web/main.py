@@ -235,6 +235,26 @@ async def api_upload(files: list[UploadFile] = File(...)):
     return {"saved": saved}
 
 
+@app.post("/api/files/{filename}/toggle")
+async def api_toggle_file(filename: str):
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, indexer.toggle_file, filename)
+        return result
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
+
+@app.delete("/api/files/{filename}")
+async def api_delete_file(filename: str):
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, indexer.delete_file, filename)
+        return result
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
+
 @app.post("/api/index")
 async def api_index():
     started = await indexer.start_indexing()

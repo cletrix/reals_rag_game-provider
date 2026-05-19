@@ -1,6 +1,5 @@
 qdrant_data/
 postgres_data/
-data/raw/
 data/indexed.json
 data/embed_speed.json
 __pycache__/
