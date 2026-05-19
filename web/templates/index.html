@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG LandF</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#2563eb',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .prose-chat p { margin-bottom: 0.5rem; }
+    .prose-chat ul { list-style: disc; padding-left: 1.2rem; margin-bottom: 0.5rem; }
+    .prose-chat ol { list-style: decimal; padding-left: 1.2rem; margin-bottom: 0.5rem; }
+    .prose-chat code { background: rgba(255,255,255,0.08); border-radius: 3px; padding: 1px 4px; font-size: 0.85em; }
+    .prose-chat pre { background: rgba(255,255,255,0.06); border-radius: 6px; padding: 0.75rem; overflow-x: auto; margin: 0.5rem 0; }
+    .prose-chat pre code { background: none; padding: 0; }
+    .prose-chat strong { font-weight: 600; }
+    .cursor-blink { animation: blink 1s step-end infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #374151; border-radius: 2px; }
+  </style>
+</head>
+<body class="flex flex-col h-screen bg-gray-950 text-gray-100 overflow-hidden"
+      x-data="chatApp()"
+      x-init="init()"
+      x-cloak>
+
+  <!-- HEADER -->
+  <header class="flex items-center justify-between px-5 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center text-xs font-bold">R</div>
+      <span class="font-semibold text-sm tracking-wide">RAG LandF</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span class="text-xs text-gray-400 hidden sm:block" x-text="statsText"></span>
+      <div class="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
+           :class="currentProvider === 'groq' ? 'bg-purple-900/40 text-purple-300' : 'bg-green-900/40 text-green-300'">
+        <div class="w-1.5 h-1.5 rounded-full"
+             :class="currentProvider === 'groq' ? 'bg-purple-400' : 'bg-green-400'"></div>
+        <span x-text="currentProvider === 'groq' ? 'Groq' : 'Ollama'"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-60 flex flex-col bg-gray-900 border-r border-gray-800 shrink-0">
+      <div class="p-3">
+        <button @click="newChat()"
+                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm transition-colors">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Nova conversa
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
+        <p class="text-xs text-gray-500 px-2 py-1 font-medium">Histórico</p>
+        <template x-for="item in history" :key="item.id">
+          <button @click="loadQuery(item.id)"
+                  :class="activeQueryId === item.id ? 'bg-gray-700 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'"
+                  class="w-full text-left text-xs px-3 py-2 rounded-lg truncate transition-colors block">
+            <span x-text="item.question"></span>
+          </button>
+        </template>
+        <p x-show="history.length === 0" class="text-xs text-gray-600 px-2 py-4 text-center">
+          Nenhuma conversa ainda
+        </p>
+      </div>
+
+      <div class="p-3 border-t border-gray-800">
+        <button @click="openSettings()"
+                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-200 text-sm transition-colors">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Configurações
+        </button>
+      </div>
+    </aside>
+
+    <!-- ÁREA DE CHAT -->
+    <main class="flex flex-col flex-1 overflow-hidden">
+
+      <!-- Área de mensagens -->
+      <div id="messages" class="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+
+        <!-- Estado vazio -->
+        <div x-show="messages.length === 0 && !streaming" class="flex flex-col items-center justify-center h-full text-center">
+          <div class="w-14 h-14 rounded-2xl bg-blue-600/20 flex items-center justify-center mb-4">
+            <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+          </div>
+          <h2 class="text-lg font-medium text-gray-300 mb-1">Como posso ajudar?</h2>
+          <p class="text-sm text-gray-500 max-w-sm">
+            Faça perguntas sobre os documentos indexados. As respostas são geradas com base no conteúdo da sua base de conhecimento.
+          </p>
+        </div>
+
+        <!-- Mensagens renderizadas -->
+        <template x-for="msg in messages" :key="msg.id">
+          <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+
+            <!-- Usuário -->
+            <div x-show="msg.role === 'user'"
+                 class="max-w-xl bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm leading-relaxed">
+              <span x-text="msg.content"></span>
+            </div>
+
+            <!-- Assistente -->
+            <div x-show="msg.role === 'assistant'" class="max-w-2xl flex gap-3">
+              <div class="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-gray-300">
+                AI
+              </div>
+              <div class="flex-1">
+                <div class="bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed">
+                  <div class="prose-chat text-gray-100" x-html="msg.html"></div>
+                </div>
+
+                <!-- Fontes -->
+                <div x-show="msg.sources && msg.sources.length > 0" class="mt-2">
+                  <details class="group">
+                    <summary class="text-xs text-gray-500 cursor-pointer hover:text-gray-400 flex items-center gap-1 select-none list-none">
+                      <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                      </svg>
+                      <span x-text="(msg.sources || []).length + ' fonte(s)'"></span>
+                    </summary>
+                    <ul class="mt-1.5 space-y-1">
+                      <template x-for="(src, i) in (msg.sources || [])" :key="i">
+                        <li class="flex items-center gap-2 text-xs text-gray-500">
+                          <span class="text-gray-600" x-text="'[' + (i+1) + ']'"></span>
+                          <span class="text-gray-400 truncate" x-text="src.file"></span>
+                          <span x-show="src.page" class="text-gray-600" x-text="'p.' + src.page"></span>
+                          <span class="text-gray-700 font-mono" x-text="src.score"></span>
+                        </li>
+                      </template>
+                    </ul>
+                  </details>
+                </div>
+
+                <!-- Meta: tempo + modelo -->
+                <div x-show="msg.elapsed_ms" class="mt-1 text-xs text-gray-600 pl-1">
+                  <span x-text="(msg.elapsed_ms / 1000).toFixed(1) + 's'"></span>
+                  <span x-show="msg.llm_model" class="ml-2" x-text="'· ' + msg.llm_model"></span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </template>
+
+        <!-- Resposta em streaming -->
+        <div x-show="streaming" class="flex justify-start">
+          <div class="max-w-2xl flex gap-3">
+            <div class="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-gray-300">
+              AI
+            </div>
+            <div class="bg-gray-800 rounded-2xl rounded-tl-sm px-4 py-3 text-sm leading-relaxed max-w-2xl">
+              <div class="prose-chat text-gray-100" x-html="streamingHtml"></div>
+              <span class="inline-block w-0.5 h-4 bg-gray-400 cursor-blink ml-0.5 align-middle"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- INPUT -->
+      <div class="border-t border-gray-800 bg-gray-950 px-4 py-4">
+        <div class="flex gap-3 max-w-4xl mx-auto">
+          <div class="flex-1 relative">
+            <textarea
+              x-model="inputText"
+              @keydown.enter.prevent="if (!$event.shiftKey && !streaming) sendMessage()"
+              :disabled="streaming"
+              placeholder="Faça uma pergunta... (Enter para enviar, Shift+Enter para nova linha)"
+              rows="2"
+              class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:border-blue-600 placeholder-gray-600 disabled:opacity-50 transition-colors leading-relaxed"
+            ></textarea>
+          </div>
+          <button
+            @click="sendMessage()"
+            :disabled="streaming || !inputText.trim()"
+            class="px-4 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center shrink-0">
+            <svg x-show="!streaming" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            </svg>
+            <svg x-show="streaming" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+          </button>
+        </div>
+        <p class="text-xs text-gray-700 text-center mt-2">
+          As respostas são geradas a partir dos documentos indexados na sua base de conhecimento.
+        </p>
+      </div>
+    </main>
+  </div>
+
+  <!-- PAINEL DE CONFIGURAÇÕES (slide-in) -->
+  <div x-show="settingsOpen"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 bg-black/60 z-50 flex justify-end"
+       @click.self="closeSettings()">
+
+    <div x-show="settingsOpen"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         class="w-96 h-full bg-gray-900 border-l border-gray-800 overflow-y-auto flex flex-col">
+
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+        <h2 class="font-semibold text-sm">Configurações</h2>
+        <button @click="closeSettings()" class="text-gray-400 hover:text-gray-200 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="flex-1 p-5 space-y-6">
+
+        <!-- Provider LLM -->
+        <div>
+          <label class="block text-xs text-gray-400 font-medium mb-2">Provider LLM</label>
+          <div class="flex gap-2">
+            <button
+              @click="localSettings.llm_provider = 'groq'"
+              :class="localSettings.llm_provider === 'groq'
+                ? 'bg-purple-600 text-white border-purple-500'
+                : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-600'"
+              class="flex-1 py-2 px-3 rounded-lg text-sm border transition-all flex items-center justify-center gap-2">
+              <span>Groq</span>
+              <span x-show="localSettings.llm_provider === 'groq'" class="text-xs opacity-70">✓</span>
+            </button>
+            <button
+              @click="localSettings.llm_provider = 'ollama'"
+              :class="localSettings.llm_provider === 'ollama'
+                ? 'bg-green-700 text-white border-green-600'
+                : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-600'"
+              class="flex-1 py-2 px-3 rounded-lg text-sm border transition-all flex items-center justify-center gap-2">
+              <span>Ollama</span>
+              <span x-show="localSettings.llm_provider === 'ollama'" class="text-xs opacity-70">✓</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Modelo Groq -->
+        <div>
+          <label class="block text-xs text-gray-400 font-medium mb-2">Modelo Groq</label>
+          <select x-model="localSettings.groq_model"
+                  :disabled="localSettings.llm_provider !== 'groq'"
+                  class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600 disabled:opacity-40 transition-colors">
+            <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
+            <option value="llama-3.1-8b-instant">llama-3.1-8b-instant</option>
+            <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+            <option value="gemma2-9b-it">gemma2-9b-it</option>
+            <option value="llama3-70b-8192">llama3-70b-8192</option>
+          </select>
+        </div>
+
+        <!-- Modelo Ollama -->
+        <div>
+          <label class="block text-xs text-gray-400 font-medium mb-2">Modelo Ollama <span class="text-gray-600">(local)</span></label>
+          <select x-model="localSettings.ollama_model"
+                  :disabled="localSettings.llm_provider !== 'ollama'"
+                  class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600 disabled:opacity-40 transition-colors">
+            <option value="llama3.1:8b">llama3.1:8b</option>
+            <option value="qwen2.5:7b">qwen2.5:7b</option>
+            <option value="mistral:7b">mistral:7b</option>
+            <option value="qwen2.5:14b">qwen2.5:14b</option>
+          </select>
+        </div>
+
+        <!-- Chunks -->
+        <div>
+          <label class="block text-xs text-gray-400 font-medium mb-2">
+            Chunks recuperados <span class="text-gray-600">(similarity_top_k)</span>
+          </label>
+          <input type="number" min="1" max="10"
+                 x-model="localSettings.similarity_top_k"
+                 class="w-24 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600 transition-colors" />
+          <p class="text-xs text-gray-600 mt-1">Mais chunks = mais contexto, resposta mais lenta</p>
+        </div>
+
+        <!-- Botões -->
+        <div class="flex gap-2 pt-2">
+          <button @click="saveSettings()"
+                  class="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-medium transition-colors">
+            Salvar
+          </button>
+          <button @click="closeSettings()"
+                  class="flex-1 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm transition-colors">
+            Cancelar
+          </button>
+        </div>
+
+        <!-- Stats de uso -->
+        <div class="border-t border-gray-800 pt-5">
+          <h3 class="text-xs text-gray-400 font-medium mb-3">Uso do Groq</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between items-center">
+              <span class="text-gray-500">Queries no banco</span>
+              <span class="font-medium" x-text="Number(stats.total_queries).toLocaleString('pt-BR')"></span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-500">Tokens acumulados</span>
+              <span class="font-medium" x-text="Number(stats.total_tokens).toLocaleString('pt-BR')"></span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-gray-500">Via API Groq</span>
+              <span class="text-gray-600 text-xs" x-text="stats.groq_api_usage ? JSON.stringify(stats.groq_api_usage) : 'N/D'"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script>
+    function chatApp() {
+      return {
+        messages: [],
+        history: [],
+        inputText: '',
+        streaming: false,
+        streamingText: '',
+        streamingHtml: '',
+        settingsOpen: false,
+        localSettings: {},
+        currentProvider: 'groq',
+        stats: { total_queries: 0, total_tokens: 0, groq_api_usage: null },
+        statsText: '',
+        activeQueryId: null,
+
+        async init() {
+          await Promise.all([this.loadHistory(), this.loadStats()]);
+          const s = await fetch('/api/settings').then(r => r.json());
+          this.currentProvider = s.llm_provider || 'groq';
+        },
+
+        async loadHistory() {
+          const rows = await fetch('/api/history').then(r => r.json());
+          this.history = rows;
+        },
+
+        async loadStats() {
+          const s = await fetch('/api/stats').then(r => r.json());
+          this.stats = s;
+          const q = Number(s.total_queries).toLocaleString('pt-BR');
+          const t = Number(s.total_tokens).toLocaleString('pt-BR');
+          this.statsText = `${q} queries · ${t} tokens`;
+        },
+
+        newChat() {
+          this.messages = [];
+          this.activeQueryId = null;
+        },
+
+        async loadQuery(id) {
+          this.activeQueryId = id;
+          const q = await fetch(`/api/query/${id}`).then(r => r.json());
+          this.messages = [
+            {
+              id: 'u-' + id,
+              role: 'user',
+              content: q.question,
+              html: null,
+              sources: [],
+              elapsed_ms: null,
+              llm_model: null,
+            },
+            {
+              id: 'a-' + id,
+              role: 'assistant',
+              content: q.answer,
+              html: this.textToHtml(q.answer),
+              sources: q.sources || [],
+              elapsed_ms: q.elapsed_ms,
+              llm_model: q.llm_model,
+            },
+          ];
+          this.$nextTick(() => this.scrollToBottom());
+        },
+
+        textToHtml(text) {
+          // converte markdown básico para HTML
+          return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>')
+            .replace(/^/, '<p>')
+            .replace(/$/, '</p>');
+        },
+
+        async sendMessage() {
+          const q = this.inputText.trim();
+          if (!q || this.streaming) return;
+
+          this.messages.push({ id: Date.now(), role: 'user', content: q, html: null, sources: [], elapsed_ms: null, llm_model: null });
+          this.inputText = '';
+          this.streaming = true;
+          this.streamingText = '';
+          this.streamingHtml = '';
+          this.activeQueryId = null;
+
+          this.$nextTick(() => this.scrollToBottom());
+
+          try {
+            const resp = await fetch('/chat/stream', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ question: q }),
+            });
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let sources = [];
+            let elapsedMs = null;
+            let queryId = null;
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+
+              for (const line of lines) {
+                let data;
+                try { data = JSON.parse(line.slice(6)); } catch { continue; }
+
+                if (data.type === 'token') {
+                  this.streamingText += data.content;
+                  this.streamingHtml = this.textToHtml(this.streamingText);
+                  this.$nextTick(() => this.scrollToBottom());
+                } else if (data.type === 'sources') {
+                  sources = data.sources;
+                } else if (data.type === 'done') {
+                  elapsedMs = data.elapsed_ms;
+                  queryId = data.query_id;
+                } else if (data.type === 'error') {
+                  this.messages.push({
+                    id: Date.now(),
+                    role: 'assistant',
+                    content: '',
+                    html: `<span class="text-red-400">Erro: ${data.message}</span>`,
+                    sources: [],
+                    elapsed_ms: null,
+                    llm_model: null,
+                  });
+                  this.streaming = false;
+                  return;
+                }
+              }
+            }
+
+            // finaliza resposta
+            const settings = await fetch('/api/settings').then(r => r.json());
+            const modelKey = settings.llm_provider === 'groq' ? 'groq_model' : 'ollama_model';
+            this.messages.push({
+              id: queryId || Date.now(),
+              role: 'assistant',
+              content: this.streamingText,
+              html: this.textToHtml(this.streamingText),
+              sources,
+              elapsed_ms: elapsedMs,
+              llm_model: settings[modelKey],
+            });
+            this.currentProvider = settings.llm_provider || 'groq';
+            this.streaming = false;
+            this.streamingText = '';
+            this.streamingHtml = '';
+
+            if (queryId) this.activeQueryId = queryId;
+            await this.loadHistory();
+            await this.loadStats();
+            this.$nextTick(() => this.scrollToBottom());
+
+          } catch (e) {
+            console.error(e);
+            this.streaming = false;
+            this.messages.push({
+              id: Date.now(),
+              role: 'assistant',
+              content: '',
+              html: `<span class="text-red-400">Erro de conexão: ${e.message}</span>`,
+              sources: [],
+              elapsed_ms: null,
+              llm_model: null,
+            });
+          }
+        },
+
+        async openSettings() {
+          const s = await fetch('/api/settings').then(r => r.json());
+          this.localSettings = { ...s };
+          await this.loadStats();
+          this.settingsOpen = true;
+        },
+
+        closeSettings() {
+          this.settingsOpen = false;
+        },
+
+        async saveSettings() {
+          await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(this.localSettings),
+          });
+          this.currentProvider = this.localSettings.llm_provider || 'groq';
+          this.closeSettings();
+        },
+
+        scrollToBottom() {
+          const el = document.getElementById('messages');
+          if (el) el.scrollTop = el.scrollHeight;
+        },
+      };
+    }
+  </script>
+</body>
+</html>
