@@ -3,6 +3,7 @@ uvicorn[standard]
 jinja2
 asyncpg
 httpx
+python-multipart
 python-dotenv
 llama-index>=0.11
 llama-index-llms-ollama

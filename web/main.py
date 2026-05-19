@@ -3,9 +3,10 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
@@ -13,6 +14,9 @@ sys.path.insert(0, "/app")
 
 from db import get_history, get_query_by_id, get_stats, save_query
 from settings_manager import get_all_settings, update_setting
+import indexer
+
+DATA_RAW = Path("/app/data/raw")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -203,3 +207,42 @@ def _extract_tokens(response) -> int | None:
         return usage.get("total_tokens")
     except Exception:
         return None
+
+
+# ---------------------------------------------------------------------------
+# API — documentos
+# ---------------------------------------------------------------------------
+
+@app.get("/api/files")
+async def api_files():
+    loop = asyncio.get_event_loop()
+    files = await loop.run_in_executor(None, indexer.get_files)
+    return files
+
+
+@app.post("/api/files/upload")
+async def api_upload(files: list[UploadFile] = File(...)):
+    DATA_RAW.mkdir(parents=True, exist_ok=True)
+    saved = []
+    for upload in files:
+        suffix = Path(upload.filename).suffix.lower()
+        if suffix not in {".pdf", ".md", ".txt"}:
+            continue
+        dest = DATA_RAW / upload.filename
+        content = await upload.read()
+        dest.write_bytes(content)
+        saved.append(upload.filename)
+    return {"saved": saved}
+
+
+@app.post("/api/index")
+async def api_index():
+    started = await indexer.start_indexing()
+    if not started:
+        return {"ok": False, "message": "Indexação já em andamento"}
+    return {"ok": True, "message": "Indexação iniciada"}
+
+
+@app.get("/api/index/status")
+async def api_index_status():
+    return indexer.get_state()

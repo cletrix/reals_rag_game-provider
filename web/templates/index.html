@@ -82,7 +82,15 @@
         </p>
       </div>
 
-      <div class="p-3 border-t border-gray-800">
+      <div class="p-3 border-t border-gray-800 space-y-1">
+        <button @click="openDocs()"
+                class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-200 text-sm transition-colors">
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          Documentos
+          <span x-show="indexStatus.running" class="ml-auto w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+        </button>
         <button @click="openSettings()"
                 class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-200 text-sm transition-colors">
           <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,6 +353,161 @@
     </div>
   </div>
 
+  <!-- PAINEL DE DOCUMENTOS (slide-in) -->
+  <div x-show="docsOpen"
+       x-transition:enter="transition ease-out duration-200"
+       x-transition:enter-start="opacity-0"
+       x-transition:enter-end="opacity-100"
+       x-transition:leave="transition ease-in duration-150"
+       x-transition:leave-start="opacity-100"
+       x-transition:leave-end="opacity-0"
+       class="fixed inset-0 bg-black/60 z-50 flex justify-end"
+       @click.self="docsOpen = false">
+
+    <div x-show="docsOpen"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         class="w-[480px] h-full bg-gray-900 border-l border-gray-800 overflow-y-auto flex flex-col">
+
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-800 shrink-0">
+        <div>
+          <h2 class="font-semibold text-sm">Documentos</h2>
+          <p class="text-xs text-gray-500 mt-0.5">
+            <span x-text="docFiles.filter(f => f.indexed).length"></span> indexados ·
+            <span x-text="docFiles.filter(f => !f.indexed).length"></span> pendentes
+          </p>
+        </div>
+        <button @click="docsOpen = false" class="text-gray-400 hover:text-gray-200 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- ZONA DE UPLOAD -->
+      <div class="p-4 shrink-0">
+        <div
+          @dragover.prevent="dragOver = true"
+          @dragleave.prevent="dragOver = false"
+          @drop.prevent="handleDrop($event)"
+          :class="dragOver ? 'border-blue-500 bg-blue-600/10' : 'border-gray-700 bg-gray-800/40 hover:border-gray-600'"
+          class="border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer"
+          @click="$refs.fileInput.click()">
+          <svg class="w-8 h-8 mx-auto mb-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+          <p class="text-sm text-gray-400">Arraste arquivos aqui ou <span class="text-blue-400">clique para selecionar</span></p>
+          <p class="text-xs text-gray-600 mt-1">PDF, MD, TXT</p>
+          <input x-ref="fileInput" type="file" multiple accept=".pdf,.md,.txt" class="hidden" @change="handleFileInput($event)" />
+        </div>
+
+        <!-- Status upload -->
+        <div x-show="uploadStatus" class="mt-2 text-xs text-center"
+             :class="uploadStatus?.ok ? 'text-green-400' : 'text-red-400'"
+             x-text="uploadStatus?.message"></div>
+      </div>
+
+      <!-- BOTÃO INDEXAR -->
+      <div class="px-4 pb-3 shrink-0">
+        <button
+          @click="startIndexing()"
+          :disabled="indexStatus.running || docFiles.filter(f => !f.indexed).length === 0"
+          class="w-full py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+          :class="indexStatus.running
+            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+            : docFiles.filter(f => !f.indexed).length === 0
+              ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-500 text-white'">
+          <svg x-show="!indexStatus.running" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          <svg x-show="indexStatus.running" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <span x-text="indexStatus.running ? 'Indexando...' : 'Indexar pendentes'"></span>
+        </button>
+      </div>
+
+      <!-- LISTA DE ARQUIVOS -->
+      <div class="flex-1 overflow-y-auto px-4 pb-4">
+        <p class="text-xs text-gray-500 font-medium mb-2">Arquivos em data/raw/</p>
+
+        <div x-show="docFiles.length === 0" class="text-xs text-gray-600 text-center py-8">
+          Nenhum arquivo encontrado. Faça upload acima.
+        </div>
+
+        <ul class="space-y-1.5">
+          <template x-for="f in docFiles" :key="f.path">
+            <li class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-800/60">
+              <!-- ícone por extensão -->
+              <div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 text-xs font-bold"
+                   :class="f.name.endsWith('.pdf') ? 'bg-red-900/40 text-red-400' : f.name.endsWith('.md') ? 'bg-blue-900/40 text-blue-400' : 'bg-gray-700 text-gray-400'">
+                <span x-text="f.name.endsWith('.pdf') ? 'PDF' : f.name.endsWith('.md') ? 'MD' : 'TXT'"></span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-gray-200 truncate" x-text="f.name"></p>
+                <p class="text-xs text-gray-500" x-text="f.size_kb + ' KB'"></p>
+              </div>
+              <!-- status -->
+              <div x-show="f.indexed" class="flex items-center gap-1 text-xs text-green-400 shrink-0">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+                indexado
+              </div>
+              <div x-show="!f.indexed" class="text-xs text-yellow-500 shrink-0">pendente</div>
+            </li>
+          </template>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROGRESS BAR FLUTUANTE -->
+  <div x-show="indexStatus.running || showIndexDone"
+       x-transition:enter="transition ease-out duration-300"
+       x-transition:enter-start="translate-y-4 opacity-0"
+       x-transition:enter-end="translate-y-0 opacity-100"
+       x-transition:leave="transition ease-in duration-200"
+       x-transition:leave-start="translate-y-0 opacity-100"
+       x-transition:leave-end="translate-y-4 opacity-0"
+       class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-96 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl px-4 py-3">
+
+    <div class="flex items-start justify-between gap-3 mb-2">
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-medium"
+           :class="indexStatus.status === 'error' ? 'text-red-400' : indexStatus.status === 'done' ? 'text-green-400' : 'text-gray-200'"
+           x-text="indexStatus.status === 'running' ? 'Indexando documentos...' : indexStatus.status === 'done' ? 'Indexação concluída' : 'Erro na indexação'">
+        </p>
+        <p class="text-xs text-gray-500 truncate mt-0.5" x-text="indexStatus.message"></p>
+      </div>
+      <button @click="showIndexDone = false; indexStatus.running = false"
+              class="text-gray-500 hover:text-gray-300 shrink-0 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- barra de progresso -->
+    <div class="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+      <div class="h-full rounded-full transition-all duration-500"
+           :class="indexStatus.status === 'error' ? 'bg-red-500' : indexStatus.status === 'done' ? 'bg-green-500' : 'bg-blue-500'"
+           :style="'width: ' + (indexStatus.progress_pct || 0) + '%'">
+      </div>
+    </div>
+    <div class="flex justify-between mt-1 text-xs text-gray-600">
+      <span x-show="indexStatus.total_chunks > 0"
+            x-text="indexStatus.done_chunks + ' / ' + indexStatus.total_chunks + ' chunks'"></span>
+      <span x-text="(indexStatus.progress_pct || 0) + '%'" class="ml-auto"></span>
+    </div>
+  </div>
+
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <script>
     function chatApp() {
@@ -361,11 +524,21 @@
         stats: { total_queries: 0, total_tokens: 0, groq_api_usage: null },
         statsText: '',
         activeQueryId: null,
+        // docs
+        docsOpen: false,
+        docFiles: [],
+        dragOver: false,
+        uploadStatus: null,
+        indexStatus: { running: false, status: 'idle', message: '', progress_pct: 0, total_chunks: 0, done_chunks: 0 },
+        showIndexDone: false,
+        _pollTimer: null,
 
         async init() {
           await Promise.all([this.loadHistory(), this.loadStats()]);
           const s = await fetch('/api/settings').then(r => r.json());
           this.currentProvider = s.llm_provider || 'groq';
+          // polling leve de status de indexação (a cada 3s enquanto em background)
+          setInterval(() => this._pollIndexStatus(), 3000);
         },
 
         async loadHistory() {
@@ -549,6 +722,71 @@
         scrollToBottom() {
           const el = document.getElementById('messages');
           if (el) el.scrollTop = el.scrollHeight;
+        },
+
+        // ── documentos ──────────────────────────────────────────────────
+
+        async openDocs() {
+          await this.loadDocFiles();
+          this.docsOpen = true;
+        },
+
+        async loadDocFiles() {
+          this.docFiles = await fetch('/api/files').then(r => r.json());
+        },
+
+        async handleDrop(event) {
+          this.dragOver = false;
+          const files = Array.from(event.dataTransfer.files);
+          await this._uploadFiles(files);
+        },
+
+        async handleFileInput(event) {
+          const files = Array.from(event.target.files);
+          await this._uploadFiles(files);
+          event.target.value = '';
+        },
+
+        async _uploadFiles(files) {
+          if (!files.length) return;
+          const form = new FormData();
+          files.forEach(f => form.append('files', f));
+          this.uploadStatus = null;
+          try {
+            const r = await fetch('/api/files/upload', { method: 'POST', body: form });
+            const data = await r.json();
+            if (data.saved && data.saved.length > 0) {
+              this.uploadStatus = { ok: true, message: `${data.saved.length} arquivo(s) enviado(s): ${data.saved.join(', ')}` };
+            } else {
+              this.uploadStatus = { ok: false, message: 'Nenhum arquivo válido (use .pdf, .md ou .txt)' };
+            }
+          } catch (e) {
+            this.uploadStatus = { ok: false, message: 'Erro no upload: ' + e.message };
+          }
+          await this.loadDocFiles();
+          setTimeout(() => { this.uploadStatus = null; }, 4000);
+        },
+
+        async startIndexing() {
+          const r = await fetch('/api/index', { method: 'POST' });
+          const data = await r.json();
+          if (data.ok) {
+            this.showIndexDone = false;
+            await this._pollIndexStatus();
+          }
+        },
+
+        async _pollIndexStatus() {
+          try {
+            const s = await fetch('/api/index/status').then(r => r.json());
+            const wasRunning = this.indexStatus.running;
+            this.indexStatus = s;
+            if (wasRunning && !s.running && s.status === 'done') {
+              this.showIndexDone = true;
+              await this.loadDocFiles();
+              setTimeout(() => { this.showIndexDone = false; }, 6000);
+            }
+          } catch (_) {}
         },
       };
     }

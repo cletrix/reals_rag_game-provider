@@ -60,6 +60,7 @@ services:
     volumes:
       - ./rag:/app/rag
       - ./web:/app
+      - ./data:/app/data
     ports:
       - "2468:8000"
     depends_on:
