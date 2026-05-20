@@ -1,4 +1,4 @@
-.PHONY: build rebuild index chat web web-bg psql reset
+.PHONY: build rebuild index chat web web-bg psql reset deploy deploy-full
 
 build:
 	ollama pull $$(grep EMBED_MODEL .env | cut -d= -f2)
@@ -33,3 +33,12 @@ psql:
 reset:
 	docker compose down
 	rm -rf qdrant_data/* data/indexed.json
+
+deploy:
+	./deploy.sh
+
+deploy-full:
+	docker compose down
+	docker compose build --no-cache
+	docker compose up -d
+	@echo "Deploy completo! Acesse http://localhost:2468"
