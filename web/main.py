@@ -12,7 +12,11 @@ from fastapi.templating import Jinja2Templates
 
 sys.path.insert(0, "/app")
 
-from db import get_history, get_query_by_id, get_stats, save_query
+from db import (
+    get_history, get_query_by_id, get_stats, save_query,
+    get_conversations, get_conversation, get_conversation_messages,
+    create_conversation, update_conversation_title
+)
 from settings_manager import get_all_settings, update_setting
 import indexer
 
@@ -48,6 +52,8 @@ async def api_history():
             r["created_at"] = r["created_at"].isoformat()
         if r.get("id"):
             r["id"] = str(r["id"])
+        if r.get("conversation_id"):
+            r["conversation_id"] = str(r["conversation_id"])
     return rows
 
 
@@ -60,7 +66,60 @@ async def api_query_detail(query_id: str):
         row["created_at"] = row["created_at"].isoformat()
     if row.get("id"):
         row["id"] = str(row["id"])
+    if row.get("conversation_id"):
+        row["conversation_id"] = str(row["conversation_id"])
     return row
+
+
+# ---------------------------------------------------------------------------
+# API — conversas (sessões)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/conversations")
+async def api_get_conversations():
+    """Retorna lista de conversas com contagem de mensagens e preview."""
+    conversations = await get_conversations(limit=50)
+    return conversations
+
+
+@app.post("/api/conversations")
+async def api_create_conversation(request: Request):
+    """Cria uma nova conversa."""
+    body = await request.json()
+    title = body.get("title")
+    conversation_id = await create_conversation(title)
+    return {"id": str(conversation_id), "title": title}
+
+
+@app.get("/api/conversations/{conversation_id}")
+async def api_get_conversation(conversation_id: str):
+    """Retorna dados de uma conversa específica."""
+    conversation = await get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversa não encontrada")
+    return conversation
+
+
+@app.get("/api/conversations/{conversation_id}/messages")
+async def api_get_conversation_messages(conversation_id: str):
+    """Retorna todas as mensagens de uma conversa."""
+    # Verifica se conversa existe
+    conversation = await get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversa não encontrada")
+    
+    messages = await get_conversation_messages(conversation_id)
+    return messages
+
+
+@app.patch("/api/conversations/{conversation_id}")
+async def api_update_conversation(conversation_id: str, request: Request):
+    """Atualiza dados de uma conversa (título)."""
+    body = await request.json()
+    title = body.get("title")
+    if title:
+        await update_conversation_title(conversation_id, title)
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +179,8 @@ async def _fetch_groq_usage() -> dict | None:
 async def chat_stream(request: Request):
     body = await request.json()
     question = (body.get("question") or "").strip()
+    conversation_id = body.get("conversation_id")  # Opcional - se não enviado, cria nova conversa
+    
     if not question:
         return {"error": "question vazia"}
 
@@ -158,7 +219,8 @@ async def chat_stream(request: Request):
             # extrai tokens (Groq retorna, Ollama não)
             tokens_total = _extract_tokens(response)
 
-            query_id = await save_query(
+            # Salva query com conversation_id (cria nova conversa se não fornecido)
+            query_id, conv_id = await save_query(
                 question=question,
                 answer=full_answer,
                 sources=sources,
@@ -166,9 +228,10 @@ async def chat_stream(request: Request):
                 llm_provider=provider,
                 llm_model=model,
                 tokens_total=tokens_total,
+                conversation_id=conversation_id,
             )
 
-            yield f"data: {json.dumps({'type': 'done', 'elapsed_ms': elapsed_ms, 'query_id': str(query_id)})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'elapsed_ms': elapsed_ms, 'query_id': str(query_id), 'conversation_id': str(conv_id)})}\n\n"
 
         except Exception as exc:
             yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"

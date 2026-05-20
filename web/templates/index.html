@@ -69,15 +69,18 @@
       </div>
 
       <div class="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5">
-        <p class="text-xs text-gray-500 px-2 py-1 font-medium">Histórico</p>
-        <template x-for="item in history" :key="item.id">
-          <button @click="loadQuery(item.id)"
-                  :class="activeQueryId === item.id ? 'bg-gray-700 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'"
+        <p class="text-xs text-gray-500 px-2 py-1 font-medium">Conversas</p>
+        <template x-for="conv in conversations" :key="conv.id">
+          <button @click="loadConversation(conv.id)"
+                  :class="currentConversationId === conv.id ? 'bg-gray-700 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'"
                   class="w-full text-left text-xs px-3 py-2 rounded-lg truncate transition-colors block">
-            <span x-text="item.question"></span>
+            <span x-text="conv.title || 'Nova conversa'"></span>
+            <span x-show="conv.message_count > 0" 
+                  x-text="' (' + conv.message_count + ')'" 
+                  class="text-gray-500 ml-1"></span>
           </button>
         </template>
-        <p x-show="history.length === 0" class="text-xs text-gray-600 px-2 py-4 text-center">
+        <p x-show="conversations.length === 0" class="text-xs text-gray-600 px-2 py-4 text-center">
           Nenhuma conversa ainda
         </p>
       </div>
@@ -513,7 +516,9 @@
     function chatApp() {
       return {
         messages: [],
-        history: [],
+        history: [],  // Mantido para compatibilidade, mas não usado no sidebar
+        conversations: [],  // Nova lista de conversas para sidebar
+        currentConversationId: null,  // ID da conversa ativa
         inputText: '',
         streaming: false,
         streamingText: '',
@@ -534,7 +539,7 @@
         _pollTimer: null,
 
         async init() {
-          await Promise.all([this.loadHistory(), this.loadStats()]);
+          await Promise.all([this.loadConversations(), this.loadStats()]);
           const s = await fetch('/api/settings').then(r => r.json());
           this.currentProvider = s.llm_provider || 'groq';
           // polling leve de status de indexação (a cada 3s enquanto em background)
@@ -542,8 +547,14 @@
         },
 
         async loadHistory() {
+          // Mantido para compatibilidade
           const rows = await fetch('/api/history').then(r => r.json());
           this.history = rows;
+        },
+
+        async loadConversations() {
+          const conversations = await fetch('/api/conversations').then(r => r.json());
+          this.conversations = conversations;
         },
 
         async loadStats() {
@@ -555,11 +566,49 @@
         },
 
         newChat() {
+          // Limpa mensagens e reseta conversa ativa - próxima mensagem criará nova conversa
           this.messages = [];
+          this.currentConversationId = null;
           this.activeQueryId = null;
         },
 
+        async loadConversation(id) {
+          // Carrega uma conversa completa com todas as mensagens
+          this.currentConversationId = id;
+          this.activeQueryId = null;  // Reset query individual
+          
+          const messages = await fetch(`/api/conversations/${id}/messages`).then(r => r.json());
+          
+          // Converte mensagens do formato DB para o formato do frontend
+          this.messages = [];
+          for (const msg of messages) {
+            // Adiciona pergunta do usuário
+            this.messages.push({
+              id: 'u-' + msg.id,
+              role: 'user',
+              content: msg.question,
+              html: null,
+              sources: [],
+              elapsed_ms: null,
+              llm_model: null,
+            });
+            // Adiciona resposta do assistente
+            this.messages.push({
+              id: 'a-' + msg.id,
+              role: 'assistant',
+              content: msg.answer,
+              html: this.textToHtml(msg.answer),
+              sources: msg.sources || [],
+              elapsed_ms: msg.elapsed_ms,
+              llm_model: msg.llm_model,
+            });
+          }
+          
+          this.$nextTick(() => this.scrollToBottom());
+        },
+
         async loadQuery(id) {
+          // Mantido para compatibilidade - carrega query individual
           this.activeQueryId = id;
           const q = await fetch(`/api/query/${id}`).then(r => r.json());
           this.messages = [
@@ -616,7 +665,10 @@
             const resp = await fetch('/chat/stream', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ question: q }),
+              body: JSON.stringify({ 
+                question: q,
+                conversation_id: this.currentConversationId  // Envia ID da conversa atual (null se nova)
+              }),
             });
 
             const reader = resp.body.getReader();
@@ -624,6 +676,7 @@
             let sources = [];
             let elapsedMs = null;
             let queryId = null;
+            let conversationId = null;
 
             while (true) {
               const { done, value } = await reader.read();
@@ -645,6 +698,7 @@
                 } else if (data.type === 'done') {
                   elapsedMs = data.elapsed_ms;
                   queryId = data.query_id;
+                  conversationId = data.conversation_id;  // Captura o ID da conversa
                 } else if (data.type === 'error') {
                   this.messages.push({
                     id: Date.now(),
@@ -679,7 +733,10 @@
             this.streamingHtml = '';
 
             if (queryId) this.activeQueryId = queryId;
-            await this.loadHistory();
+            // Atualiza o ID da conversa atual (se nova, agora temos o ID)
+            if (conversationId) this.currentConversationId = conversationId;
+            // Recarrega lista de conversas (ordenação pode mudar)
+            await this.loadConversations();
             await this.loadStats();
             this.$nextTick(() => this.scrollToBottom());
 

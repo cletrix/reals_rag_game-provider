@@ -1,18 +1,30 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-CREATE TABLE IF NOT EXISTS queries (
+-- Tabela de sessões/conversas
+CREATE TABLE IF NOT EXISTS conversations (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    question      TEXT NOT NULL,
-    answer        TEXT NOT NULL,
-    sources       JSONB NOT NULL DEFAULT '[]',
-    elapsed_ms    INTEGER,
-    llm_provider  VARCHAR(20) NOT NULL DEFAULT 'groq',
-    llm_model     VARCHAR(100),
-    tokens_total  INTEGER,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    title         VARCHAR(255),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations (updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS queries (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id  UUID REFERENCES conversations(id) ON DELETE CASCADE,
+    question         TEXT NOT NULL,
+    answer           TEXT NOT NULL,
+    sources          JSONB NOT NULL DEFAULT '[]',
+    elapsed_ms       INTEGER,
+    llm_provider     VARCHAR(20) NOT NULL DEFAULT 'groq',
+    llm_model        VARCHAR(100),
+    tokens_total     INTEGER,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_queries_created_at ON queries (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_queries_conversation ON queries(conversation_id, created_at ASC);
 
 CREATE TABLE IF NOT EXISTS settings (
     key        VARCHAR(100) PRIMARY KEY,
