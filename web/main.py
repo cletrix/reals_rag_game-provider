@@ -4,6 +4,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import List
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
@@ -15,14 +16,30 @@ sys.path.insert(0, "/app")
 from db import (
     get_history, get_query_by_id, get_stats, save_query,
     get_conversations, get_conversation, get_conversation_messages,
-    create_conversation, update_conversation_title
+    create_conversation, update_conversation_title, get_pool
 )
 from settings_manager import get_all_settings, update_setting
+from schemas import (
+    SettingsResponse, SettingsUpdate,
+    QueryResponse, QueryDetail,
+    StatsResponse,
+    ConversationResponse, ConversationDetail, ConversationUpdate,
+    MessageResponse,
+    ChatRequest,
+    HealthResponse,
+    ErrorResponse
+)
 import indexer
 
 DATA_RAW = Path("/app/data/raw")
 
-app = FastAPI()
+app = FastAPI(
+    title="RAG Game Provider API",
+    description="API para sistema RAG híbrido com interface web estilo ChatGPT",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
 templates = Jinja2Templates(directory="templates")
 
 
@@ -44,8 +61,13 @@ async def index(request: Request):
 # API — histórico e detalhes
 # ---------------------------------------------------------------------------
 
-@app.get("/api/history")
+@app.get("/api/history", response_model=List[QueryResponse], tags=["History"])
 async def api_history():
+    """
+    Retorna histórico de queries.
+
+    Retorna lista de queries com preview da resposta e metadados.
+    """
     rows = await get_history(limit=50)
     for r in rows:
         if hasattr(r.get("created_at"), "isoformat"):
@@ -57,8 +79,13 @@ async def api_history():
     return rows
 
 
-@app.get("/api/query/{query_id}")
+@app.get("/api/query/{query_id}", response_model=QueryDetail, tags=["History"])
 async def api_query_detail(query_id: str):
+    """
+    Retorna detalhes completos de uma query específica.
+
+    - **query_id**: ID da query a ser recuperada
+    """
     row = await get_query_by_id(query_id)
     if not row:
         raise HTTPException(status_code=404, detail="Query não encontrada")
@@ -75,34 +102,52 @@ async def api_query_detail(query_id: str):
 # API — conversas (sessões)
 # ---------------------------------------------------------------------------
 
-@app.get("/api/conversations")
+@app.get("/api/conversations", response_model=List[ConversationResponse], tags=["Conversations"])
 async def api_get_conversations():
-    """Retorna lista de conversas com contagem de mensagens e preview."""
+    """
+    Retorna lista de conversas com contagem de mensagens e preview.
+
+    Retorna lista de conversas ordenadas por atualização mais recente.
+    """
     conversations = await get_conversations(limit=50)
     return conversations
 
 
-@app.post("/api/conversations")
+@app.post("/api/conversations", response_model=ConversationDetail, tags=["Conversations"])
 async def api_create_conversation(request: Request):
-    """Cria uma nova conversa."""
+    """
+    Cria uma nova conversa.
+
+    - **title**: Título opcional da conversa
+    """
     body = await request.json()
     title = body.get("title")
     conversation_id = await create_conversation(title)
     return {"id": str(conversation_id), "title": title}
 
 
-@app.get("/api/conversations/{conversation_id}")
+@app.get("/api/conversations/{conversation_id}", response_model=ConversationDetail, tags=["Conversations"])
 async def api_get_conversation(conversation_id: str):
-    """Retorna dados de uma conversa específica."""
+    """
+    Retorna dados de uma conversa específica.
+
+    - **conversation_id**: ID da conversa a ser recuperada
+    """
     conversation = await get_conversation(conversation_id)
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
     return conversation
 
 
-@app.get("/api/conversations/{conversation_id}/messages")
+@app.get("/api/conversations/{conversation_id}/messages", response_model=List[MessageResponse], tags=["Conversations"])
 async def api_get_conversation_messages(conversation_id: str):
-    """Retorna todas as mensagens de uma conversa."""
+    """
+    Retorna todas as mensagens de uma conversa.
+
+    Retorna todas as mensagens (queries e respostas) de uma conversa específica, ordenadas por tempo.
+
+    - **conversation_id**: ID da conversa
+    """
     # Verifica se conversa existe
     conversation = await get_conversation(conversation_id)
     if not conversation:
@@ -112,9 +157,13 @@ async def api_get_conversation_messages(conversation_id: str):
     return messages
 
 
-@app.patch("/api/conversations/{conversation_id}")
+@app.patch("/api/conversations/{conversation_id}", tags=["Conversations"])
 async def api_update_conversation(conversation_id: str, request: Request):
-    """Atualiza dados de uma conversa (título)."""
+    """
+    Atualiza dados de uma conversa (título).
+
+    - **conversation_id**: ID da conversa a ser atualizada
+    """
     body = await request.json()
     title = body.get("title")
     if title:
@@ -126,13 +175,21 @@ async def api_update_conversation(conversation_id: str, request: Request):
 # API — configurações
 # ---------------------------------------------------------------------------
 
-@app.get("/api/settings")
+@app.get("/api/settings", response_model=SettingsResponse, tags=["Settings"])
 async def api_get_settings():
+    """
+    Retorna todas as configurações do sistema.
+    """
     return await get_all_settings()
 
 
-@app.post("/api/settings")
+@app.post("/api/settings", tags=["Settings"])
 async def api_update_settings(request: Request):
+    """
+    Atualiza configurações do sistema.
+
+    Aceita um objeto JSON com as chaves a serem atualizadas.
+    """
     body = await request.json()
     for key, value in body.items():
         await update_setting(key, str(value))
@@ -143,8 +200,13 @@ async def api_update_settings(request: Request):
 # API — estatísticas
 # ---------------------------------------------------------------------------
 
-@app.get("/api/stats")
+@app.get("/api/stats", response_model=StatsResponse, tags=["Stats"])
 async def api_stats():
+    """
+    Retorna estatísticas do sistema.
+
+    Retorna total de queries, tokens consumidos e uso da API Groq (se configurado).
+    """
     local = await get_stats()
     groq_data = await _fetch_groq_usage()
     return {
@@ -175,8 +237,17 @@ async def _fetch_groq_usage() -> dict | None:
 # Chat streaming (SSE)
 # ---------------------------------------------------------------------------
 
-@app.post("/chat/stream")
+@app.post("/chat/stream", tags=["Chat"])
 async def chat_stream(request: Request):
+    """
+    Endpoint de chat streaming com Server-Sent Events (SSE).
+
+    Recebe uma pergunta e retorna resposta em streaming.
+    Mantém contexto de conversação se conversation_id for fornecido.
+
+    - **question**: Pergunta a ser feita (obrigatório)
+    - **conversation_id**: ID da conversa (opcional, cria nova se não fornecido)
+    """
     body = await request.json()
     question = (body.get("question") or "").strip()
     conversation_id = body.get("conversation_id")  # Opcional - se não enviado, cria nova conversa
@@ -276,15 +347,23 @@ def _extract_tokens(response) -> int | None:
 # API — documentos
 # ---------------------------------------------------------------------------
 
-@app.get("/api/files")
+@app.get("/api/files", tags=["Documents"])
 async def api_files():
+    """
+    Retorna lista de arquivos indexados.
+    """
     loop = asyncio.get_event_loop()
     files = await loop.run_in_executor(None, indexer.get_files)
     return files
 
 
-@app.post("/api/files/upload")
+@app.post("/api/files/upload", tags=["Documents"])
 async def api_upload(files: list[UploadFile] = File(...)):
+    """
+    Faz upload de arquivos para indexação.
+
+    Aceita arquivos PDF, MD e TXT.
+    """
     DATA_RAW.mkdir(parents=True, exist_ok=True)
     saved = []
     for upload in files:
@@ -298,14 +377,70 @@ async def api_upload(files: list[UploadFile] = File(...)):
     return {"saved": saved}
 
 
-@app.post("/api/index")
+@app.post("/api/index", tags=["Documents"])
 async def api_index():
+    """
+    Inicia indexação de documentos.
+
+    Inicia processo de indexação dos arquivos no diretório data/raw.
+    """
     started = await indexer.start_indexing()
     if not started:
         return {"ok": False, "message": "Indexação já em andamento"}
     return {"ok": True, "message": "Indexação iniciada"}
 
 
-@app.get("/api/index/status")
+@app.get("/api/index/status", tags=["Documents"])
 async def api_index_status():
+    """
+    Retorna status atual da indexação.
+    """
     return indexer.get_state()
+
+
+# ---------------------------------------------------------------------------
+# Health Check
+# ---------------------------------------------------------------------------
+
+@app.get("/health", response_model=HealthResponse, tags=["Health"])
+async def health_check():
+    """
+    Health check do sistema.
+
+    Verifica saúde dos serviços dependentes (PostgreSQL, Qdrant, Ollama).
+    """
+    from datetime import datetime
+    
+    services = {}
+    
+    # Check PostgreSQL
+    try:
+        pool = await get_pool()
+        await pool.fetchval("SELECT 1")
+        services["postgres"] = "healthy"
+    except Exception:
+        services["postgres"] = "unhealthy"
+    
+    # Check Qdrant
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            response = await client.get("http://qdrant:6333/health")
+            services["qdrant"] = "healthy" if response.status_code == 200 else "unhealthy"
+    except Exception:
+        services["qdrant"] = "unhealthy"
+    
+    # Check Ollama
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            response = await client.get("http://host.docker.internal:11434/api/tags")
+            services["ollama"] = "healthy" if response.status_code == 200 else "unhealthy"
+    except Exception:
+        services["ollama"] = "unhealthy"
+    
+    overall_status = "healthy" if all(s == "healthy" for s in services.values()) else "unhealthy"
+    
+    return {
+        "status": overall_status,
+        "timestamp": datetime.utcnow().isoformat(),
+        "services": services
+    }

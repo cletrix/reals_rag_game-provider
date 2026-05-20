@@ -7,6 +7,75 @@
 
 ---
 
+## Falhas Críticas e Melhorias Necessárias
+
+**Status Atual:** ✅ Funcional, mas ❌ Ainda não Enterprise-ready
+
+### 10 Falhas Críticas Identificadas
+
+#### 1. Falta de Testes Automatizados ⚠️
+- [ ] Adicionar pytest com testes unitários
+- [ ] Adicionar testes de integração para endpoints
+- [ ] Adicionar Playwright/Cypress para E2E
+- [ ] Configurar coverage mínimo (80%)
+
+#### 2. Falta de CI/CD ⚠️
+- [ ] Adicionar GitHub Actions para CI
+- [ ] Pipeline: test → build → deploy
+- [ ] Deploy automático para staging/produção
+- [ ] Configurar notificações de build
+
+#### 3. Falta de Autenticação e Autorização ⚠️
+- [ ] Implementar OAuth2/LDAP
+- [ ] Adicionar JWT tokens
+- [ ] Implementar RBAC por departamento
+- [ ] Configurar middleware de autenticação
+
+#### 4. Falta de Validação de Input ⚠️
+- [ ] Adicionar Pydantic para validação
+- [ ] Sanitizar inputs de usuário
+- [ ] Adicionar rate limiting
+- [ ] Validar tamanho de inputs
+
+#### 5. Falta de Logging Estruturado ⚠️
+- [ ] Implementar logging estruturado (JSON)
+- [ ] Adicionar integração com Loki/ELK
+- [ ] Configurar alertas baseados em logs
+- [ ] Logar todas as ações críticas
+
+#### 6. Falta de Configuração por Ambiente ⚠️
+- [ ] Criar .env.dev, .env.staging, .env.prod
+- [ ] Usar variáveis de ambiente por ambiente
+- [ ] Documentar configurações
+- [ ] Adicionar docker-compose.override.yml para dev
+
+#### 7. Falta de Health Checks Específicos ⚠️
+- [x] Adicionar endpoint /health
+- [x] Verificar dependências (Ollama, Qdrant)
+- [ ] Adicionar /readiness e /liveness
+- [ ] Configurar health checks no docker-compose
+
+#### 8. Falta de Documentação de API ⚠️
+- [x] Adicionar FastAPI automatic docs (/docs)
+- [x] Documentar todos os endpoints
+- [x] Adicionar exemplos de requests/responses
+- [x] Gerar OpenAPI spec
+- [x] Criar documento docs/api-documentation.md
+
+#### 9. Falta de Tratamento de Erros Robusto ⚠️
+- [ ] Implementar logging estruturado de erros
+- [ ] Adicionar retry com exponential backoff
+- [ ] Criar exceções customizadas
+- [ ] Adicionar error handlers globais
+
+#### 10. Falta de Backup Automatizado ⚠️
+- [ ] Implementar scripts de backup
+- [ ] Configurar backup automatizado (cron)
+- [ ] Testar restore regularmente
+- [ ] Configurar retenção de backups
+
+---
+
 ## Estrutura Organizacional
 
 ### Departamentos Principais
@@ -42,18 +111,16 @@
 - [ ] Avaliar necessidade de servidor dedicado vs cloud
 - [ ] Configurar servidor com mínimo 32GB RAM (recomendado 64GB)
 - [ ] Instalar Docker e Docker Compose em produção
-- [ ] Configurar backups automáticos (Qdrant, PostgreSQL)
-- [ ] Configurar monitoramento (Prometheus/Grafana ou similar)
 - [ ] **Implementar Grafana para dashboard de auditoria** (ver seção "Dashboard de Auditoria")
+- [ ] Configurar scripts de backup e restore (ver falha #10)
 
 #### 1.2 Segurança Básica
 - [ ] Configurar firewall (UFW/iptables)
 - [ ] Configurar SSL/TLS (Let's Encrypt ou certificado próprio)
 - [ ] Configurar VPN para acesso remoto
-- [ ] Implementar autenticação (OAuth2/LDAP)
 - [ ] **Aplicar schema de auditoria enterprise** (db/schema-auditoria-enterprise.sql)
-- [ ] Configurar logs de auditoria
-- [ ] Implementar middleware para logging automático de acessos
+- [ ] Implementar rate limiting (ver falha #4)
+- [ ] Adicionar endpoint /health (ver falha #7)
 
 #### 1.3 Compliance Inicial
 - [ ] Documentar política de retenção de dados
@@ -104,13 +171,12 @@
 - [ ] Definir acesso restrito para compliance
 
 #### 3.2 Segurança Adicional
-- [ ] Implementar controle de acesso granular
+- [ ] Implementar controle de acesso granular (RBAC - ver falha #3)
 - [ ] Configurar auditoria de acessos (usar audit_log)
 - [ ] Criar políticas de retenção específicas
 - [ ] Implementar anonimização de dados pessoais (LGPD)
 - [ ] Configurar alertas para acessos a documentos sensíveis
-- [ ] Implementar logging de acessos a documentos (document_access_log)
-- [ ] Configurar detecção de acessos anômalos
+- [ ] Implementar logging estruturado (ver falha #5)
 
 #### 3.3 Integração Jira
 - [ ] Configurar integração com Jira
