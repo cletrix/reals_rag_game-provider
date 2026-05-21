@@ -32,16 +32,16 @@
 - [ ] Configurar middleware de autenticação
 
 #### 4. Falta de Validação de Input ⚠️
-- [ ] Adicionar Pydantic para validação
-- [ ] Sanitizar inputs de usuário
-- [ ] Adicionar rate limiting
-- [ ] Validar tamanho de inputs
+- [x] Adicionar Pydantic para validação
+- [x] Sanitizar inputs de usuário
+- [x] Adicionar rate limiting
+- [x] Validar tamanho de inputs
 
 #### 5. Falta de Logging Estruturado ⚠️
-- [ ] Implementar logging estruturado (JSON)
-- [ ] Adicionar integração com Loki/ELK
+- [x] Implementar logging estruturado (JSON)
+- [x] Adicionar integração com Loki/ELK
 - [ ] Configurar alertas baseados em logs
-- [ ] Logar todas as ações críticas
+- [x] Logar todas as ações críticas
 
 #### 6. Falta de Configuração por Ambiente ⚠️
 - [ ] Criar .env.dev, .env.staging, .env.prod
@@ -52,8 +52,8 @@
 #### 7. Falta de Health Checks Específicos ⚠️
 - [x] Adicionar endpoint /health
 - [x] Verificar dependências (Ollama, Qdrant)
-- [ ] Adicionar /readiness e /liveness
-- [ ] Configurar health checks no docker-compose
+- [x] Adicionar /readiness e /liveness
+- [x] Configurar health checks no docker-compose
 
 #### 8. Falta de Documentação de API ⚠️
 - [x] Adicionar FastAPI automatic docs (/docs)
@@ -63,10 +63,10 @@
 - [x] Criar documento docs/api-documentation.md
 
 #### 9. Falta de Tratamento de Erros Robusto ⚠️
-- [ ] Implementar logging estruturado de erros
+- [x] Implementar logging estruturado de erros
 - [ ] Adicionar retry com exponential backoff
 - [ ] Criar exceções customizadas
-- [ ] Adicionar error handlers globais
+- [x] Adicionar error handlers globais
 
 #### 10. Falta de Backup Automatizado ⚠️
 - [ ] Implementar scripts de backup
@@ -510,18 +510,18 @@ docker run --rm -v $(pwd)/grafana_data:/data -v $(pwd)/backup:/backup alpine tar
 ### Cronograma de Implementação
 
 #### Semana 1 (Fase 1)
-- [ ] Adicionar Grafana ao docker-compose.yml
-- [ ] Criar diretório grafana_data
-- [ ] Iniciar container Grafana
-- [ ] Configurar datasource PostgreSQL
-- [ ] Criar dashboard básico de visão geral
+- [x] Adicionar Grafana ao docker-compose.yml
+- [x] Criar diretório grafana_data (volume nomeado Docker)
+- [x] Iniciar container Grafana
+- [x] Configurar datasource PostgreSQL (provisioning automático)
+- [x] Criar dashboard básico de visão geral
 
 #### Semana 2 (Fase 1)
 - [ ] Criar dashboard de acessos por usuário
-- [ ] Criar dashboard de acessos a documentos
+- [x] Criar dashboard de acessos a documentos (rag-conversations.json)
 - [ ] Configurar alertas básicos
 - [ ] Testar alertas
-- [ ] Documentar procedimentos
+- [x] Documentar procedimentos (docs/CHANGELOG.md)
 
 #### Semana 3 (Fase 2 - Pilotagem)
 - [ ] Refinar dashboards com feedback real

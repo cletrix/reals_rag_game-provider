@@ -94,7 +94,7 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_AUTH_ANONYMOUS_ENABLED=false
     volumes:
-      - ./grafana_data:/var/lib/grafana
+      - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     depends_on:
       postgres:
@@ -105,3 +105,6 @@ services:
       interval: 15s
       timeout: 5s
       retries: 3
+
+volumes:
+  grafana_data:
