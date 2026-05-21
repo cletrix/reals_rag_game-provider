@@ -1,0 +1,125 @@
+{
+  "uid": "rag-conversations",
+  "title": "RAG — Conversas e Sessões",
+  "tags": ["rag", "conversations"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "1m",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Conversas Ativas (7d)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM conversations WHERE updated_at >= NOW() - INTERVAL '7 days'",
+          "format": "table"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "blue", "value": null }] } } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Média de Mensagens por Conversa",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(AVG(msg_count), 1) as value FROM (SELECT conversation_id, COUNT(*) as msg_count FROM queries WHERE conversation_id IS NOT NULL GROUP BY conversation_id) sub",
+          "format": "table"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }] } } }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Conversa Mais Longa (mensagens)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT MAX(msg_count) as value FROM (SELECT conversation_id, COUNT(*) as msg_count FROM queries WHERE conversation_id IS NOT NULL GROUP BY conversation_id) sub",
+          "format": "table"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "purple", "value": null }] } } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Queries sem Conversa",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM queries WHERE conversation_id IS NULL",
+          "format": "table"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "yellow", "value": null }] } } }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Novas Conversas por dia",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('day', created_at) AS time, COUNT(*) AS novas_conversas FROM conversations WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY 1 ORDER BY 1",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 6,
+      "type": "histogram",
+      "title": "Distribuição de Mensagens por Conversa",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as mensagens FROM queries WHERE conversation_id IS NOT NULL GROUP BY conversation_id",
+          "format": "table"
+        }
+      ],
+      "options": { "bucketSize": "auto", "fillOpacity": 60 }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Top 10 Conversas Mais Longas",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT c.title as conversa, COUNT(q.id) as mensagens, MIN(q.created_at) as inicio, MAX(q.created_at) as ultima_msg, ROUND(AVG(q.elapsed_ms)) as avg_ms FROM conversations c JOIN queries q ON q.conversation_id = c.id GROUP BY c.id, c.title ORDER BY mensagens DESC LIMIT 10",
+          "format": "table"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Conversas Recentes",
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 10 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT c.title as titulo, COUNT(q.id) as mensagens, c.created_at as criada_em, c.updated_at as ultima_atividade FROM conversations c LEFT JOIN queries q ON q.conversation_id = c.id WHERE c.created_at >= NOW() - INTERVAL '7 days' GROUP BY c.id, c.title, c.created_at, c.updated_at ORDER BY c.updated_at DESC LIMIT 30",
+          "format": "table"
+        }
+      ]
+    }
+  ]
+}

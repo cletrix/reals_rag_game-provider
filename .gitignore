@@ -1,5 +1,7 @@
 qdrant_data/
 postgres_data/
+grafana_data/*
+!grafana_data/.gitkeep
 data/raw/
 data/indexed.json
 data/embed_speed.json

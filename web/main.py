@@ -3,13 +3,18 @@ import json
 import os
 import sys
 import time
+import uuid
+from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from typing import List
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, UploadFile, File
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 sys.path.insert(0, "/app")
 
@@ -18,6 +23,7 @@ from db import (
     get_conversations, get_conversation, get_conversation_messages,
     create_conversation, update_conversation_title, get_pool
 )
+from logger import log
 from settings_manager import get_all_settings, update_setting
 from schemas import (
     SettingsResponse, SettingsUpdate,
@@ -33,6 +39,27 @@ import indexer
 
 DATA_RAW = Path("/app/data/raw")
 
+# ---------------------------------------------------------------------------
+# Rate limiting simples (in-memory por IP)
+# ---------------------------------------------------------------------------
+_rate_counters: dict[str, list[float]] = defaultdict(list)
+RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "30"))  # requests
+RATE_LIMIT_WINDOW  = int(os.getenv("RATE_LIMIT_WINDOW",   "60"))   # segundos
+
+
+def _check_rate_limit(ip: str) -> bool:
+    """Retorna True se o IP ainda está dentro do limite."""
+    now = time.time()
+    window_start = now - RATE_LIMIT_WINDOW
+    hits = _rate_counters[ip]
+    # remove registros fora da janela
+    _rate_counters[ip] = [t for t in hits if t > window_start]
+    if len(_rate_counters[ip]) >= RATE_LIMIT_REQUESTS:
+        return False
+    _rate_counters[ip].append(now)
+    return True
+
+
 app = FastAPI(
     title="RAG Game Provider API",
     description="API para sistema RAG híbrido com interface web estilo ChatGPT",
@@ -41,6 +68,100 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 templates = Jinja2Templates(directory="templates")
+
+
+# ---------------------------------------------------------------------------
+# Middleware — logging de requests + request_id
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    request_id = str(uuid.uuid4())[:8]
+    start = time.time()
+    response = await call_next(request)
+    duration_ms = int((time.time() - start) * 1000)
+    log.info(
+        "%s %s",
+        request.method,
+        request.url.path,
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": duration_ms,
+            "user_ip": request.client.host if request.client else "unknown",
+        },
+    )
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+# ---------------------------------------------------------------------------
+# Middleware — rate limiting (aplica apenas em /api e /chat)
+# ---------------------------------------------------------------------------
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api") or path.startswith("/chat"):
+        ip = request.client.host if request.client else "unknown"
+        if not _check_rate_limit(ip):
+            log.warning("Rate limit excedido", extra={"user_ip": ip, "path": path})
+            return JSONResponse(
+                status_code=429,
+                content={"error": "Too Many Requests", "message": "Limite de requisições excedido. Tente novamente em instantes."},
+            )
+    return await call_next(request)
+
+
+# ---------------------------------------------------------------------------
+# Error handlers globais
+# ---------------------------------------------------------------------------
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    log.warning(
+        "HTTP %s: %s",
+        exc.status_code,
+        exc.detail,
+        extra={"path": request.url.path, "status_code": exc.status_code},
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": "HTTPException", "message": str(exc.detail)},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    log.warning(
+        "Validation error: %s",
+        errors,
+        extra={"path": request.url.path, "status_code": 422},
+    )
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": "ValidationError",
+            "message": "Dados de entrada inválidos",
+            "detail": errors,
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    log.exception(
+        "Erro não tratado: %s",
+        str(exc),
+        extra={"path": request.url.path, "status_code": 500},
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"error": "InternalServerError", "message": "Erro interno do servidor"},
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -249,11 +370,16 @@ async def chat_stream(request: Request):
     - **conversation_id**: ID da conversa (opcional, cria nova se não fornecido)
     """
     body = await request.json()
-    question = (body.get("question") or "").strip()
-    conversation_id = body.get("conversation_id")  # Opcional - se não enviado, cria nova conversa
-    
+    try:
+        payload = ChatRequest(**body)
+    except Exception:
+        return JSONResponse(status_code=422, content={"error": "ValidationError", "message": "Campo 'question' é obrigatório e não pode estar vazio"})
+
+    question = payload.question.strip()
+    conversation_id = payload.conversation_id
+
     if not question:
-        return {"error": "question vazia"}
+        return JSONResponse(status_code=422, content={"error": "ValidationError", "message": "question não pode estar vazia"})
 
     settings = await get_all_settings()
     provider = settings.get("llm_provider", "groq")
@@ -302,9 +428,18 @@ async def chat_stream(request: Request):
                 conversation_id=conversation_id,
             )
 
+            log.info(
+                "Chat respondido",
+                extra={
+                    "query_id": str(query_id),
+                    "conversation_id": str(conv_id),
+                    "duration_ms": elapsed_ms,
+                },
+            )
             yield f"data: {json.dumps({'type': 'done', 'elapsed_ms': elapsed_ms, 'query_id': str(query_id), 'conversation_id': str(conv_id)})}\n\n"
 
         except Exception as exc:
+            log.exception("Erro no chat streaming: %s", str(exc))
             yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
 
     return StreamingResponse(
@@ -399,20 +534,18 @@ async def api_index_status():
 
 
 # ---------------------------------------------------------------------------
-# Health Check
+# Health Check / Readiness / Liveness
 # ---------------------------------------------------------------------------
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
     """
-    Health check do sistema.
+    Health check completo do sistema.
 
     Verifica saúde dos serviços dependentes (PostgreSQL, Qdrant, Ollama).
     """
-    from datetime import datetime
-    
     services = {}
-    
+
     # Check PostgreSQL
     try:
         pool = await get_pool()
@@ -420,27 +553,56 @@ async def health_check():
         services["postgres"] = "healthy"
     except Exception:
         services["postgres"] = "unhealthy"
-    
+
     # Check Qdrant
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get("http://qdrant:6333/health")
-            services["qdrant"] = "healthy" if response.status_code == 200 else "unhealthy"
+            resp = await client.get("http://qdrant:6333/health")
+            services["qdrant"] = "healthy" if resp.status_code == 200 else "unhealthy"
     except Exception:
         services["qdrant"] = "unhealthy"
-    
+
     # Check Ollama
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get("http://host.docker.internal:11434/api/tags")
-            services["ollama"] = "healthy" if response.status_code == 200 else "unhealthy"
+            resp = await client.get("http://host.docker.internal:11434/api/tags")
+            services["ollama"] = "healthy" if resp.status_code == 200 else "unhealthy"
     except Exception:
         services["ollama"] = "unhealthy"
-    
-    overall_status = "healthy" if all(s == "healthy" for s in services.values()) else "unhealthy"
-    
-    return {
-        "status": overall_status,
-        "timestamp": datetime.utcnow().isoformat(),
-        "services": services
-    }
+
+    overall_status = "healthy" if all(s == "healthy" for s in services.values()) else "degraded"
+    status_code = 200 if overall_status == "healthy" else 207
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": overall_status,
+            "timestamp": datetime.utcnow().isoformat(),
+            "services": services,
+        },
+    )
+
+
+@app.get("/readiness", tags=["Health"])
+async def readiness():
+    """
+    Readiness probe — indica se o serviço está pronto para receber tráfego.
+
+    Usado pelo orquestrador (Docker / Kubernetes) para aguardar dependências.
+    """
+    try:
+        pool = await get_pool()
+        await pool.fetchval("SELECT 1")
+        return {"status": "ready"}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Banco não disponível: {exc}")
+
+
+@app.get("/liveness", tags=["Health"])
+async def liveness():
+    """
+    Liveness probe — indica se o processo está vivo.
+
+    Retorna sempre 200 enquanto o processo estiver rodando.
+    """
+    return {"status": "alive", "timestamp": datetime.utcnow().isoformat()}

@@ -59,6 +59,8 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: "postgresql://rag:rag@postgres:5432/ragdb"
+      RATE_LIMIT_REQUESTS: "30"
+      RATE_LIMIT_WINDOW: "60"
     volumes:
       - ./rag:/app/rag
       - ./web:/app
@@ -72,4 +74,34 @@ services:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/liveness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: landf_grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - ./grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3

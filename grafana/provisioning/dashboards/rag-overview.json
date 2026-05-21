@@ -1,0 +1,142 @@
+{
+  "uid": "rag-overview",
+  "title": "RAG — Visão Geral",
+  "tags": ["rag"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total de Queries (24h)",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM queries WHERE created_at >= NOW() - INTERVAL '24 hours'",
+          "format": "table"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "blue", "value": null }] } } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total de Conversas (24h)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) as value FROM conversations WHERE created_at >= NOW() - INTERVAL '24 hours'",
+          "format": "table"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }] } } }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Total de Tokens (24h)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(SUM(tokens_total), 0) as value FROM queries WHERE created_at >= NOW() - INTERVAL '24 hours'",
+          "format": "table"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "orange", "value": null }] }, "unit": "short" } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Tempo Médio Resposta (ms)",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT ROUND(AVG(elapsed_ms)) as value FROM queries WHERE created_at >= NOW() - INTERVAL '24 hours'",
+          "format": "table"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5000 }, { "color": "red", "value": 15000 }] }, "unit": "ms" } }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Queries por hora",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('hour', created_at) AS time, COUNT(*) AS queries FROM queries WHERE created_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Latência média por hora (ms)",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT date_trunc('hour', created_at) AS time, ROUND(AVG(elapsed_ms)) AS avg_ms FROM queries WHERE created_at >= NOW() - INTERVAL '24 hours' GROUP BY 1 ORDER BY 1",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms", "color": { "mode": "palette-classic" }, "custom": { "lineWidth": 2, "fillOpacity": 10 } } }
+    },
+    {
+      "id": 7,
+      "type": "piechart",
+      "title": "Queries por LLM Provider",
+      "gridPos": { "x": 12, "y": 12, "w": 6, "h": 8 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT llm_provider, COUNT(*) as total FROM queries WHERE created_at >= NOW() - INTERVAL '24 hours' GROUP BY llm_provider ORDER BY total DESC",
+          "format": "table"
+        }
+      ],
+      "options": { "pieType": "donut", "displayLabels": ["name", "percent"] }
+    },
+    {
+      "id": 8,
+      "type": "piechart",
+      "title": "Queries por Modelo",
+      "gridPos": { "x": 18, "y": 12, "w": 6, "h": 8 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT COALESCE(llm_model, 'desconhecido') as modelo, COUNT(*) as total FROM queries WHERE created_at >= NOW() - INTERVAL '24 hours' GROUP BY llm_model ORDER BY total DESC",
+          "format": "table"
+        }
+      ],
+      "options": { "pieType": "pie", "displayLabels": ["name", "percent"] }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Últimas Queries",
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 10 },
+      "datasource": { "uid": "ragdb-postgres" },
+      "targets": [
+        {
+          "rawSql": "SELECT q.created_at, LEFT(q.question, 80) as pergunta, LEFT(q.answer, 120) as resposta_preview, q.elapsed_ms, q.llm_provider, q.llm_model, q.tokens_total, c.title as conversa FROM queries q LEFT JOIN conversations c ON c.id = q.conversation_id ORDER BY q.created_at DESC LIMIT 20",
+          "format": "table"
+        }
+      ],
+      "options": { "sortBy": [{ "displayName": "created_at", "desc": true }] },
+      "fieldConfig": { "defaults": { "custom": { "displayMode": "auto" } } }
+    }
+  ]
+}
