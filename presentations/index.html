@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG System — Apresentação</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f78166;
+    --accent4: #d2a8ff;
+    --accent5: #ffa657;
+    --groq: #f55036;
+    --ollama: #28a745;
+    --docker: #0db7ed;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ─── DECK ─── */
+  #deck {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 48px 64px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    transform: translateX(40px);
+    overflow-y: auto;
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+  }
+
+  .slide.exit-left {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  /* ─── NAV ─── */
+  #nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 32px;
+    padding: 8px 20px;
+    z-index: 100;
+  }
+
+  .nav-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    cursor: pointer;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .nav-btn:hover { background: var(--surface); border-color: var(--accent); }
+
+  #slide-counter {
+    color: var(--muted);
+    font-size: 13px;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  /* dots */
+  #dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: background 0.2s, transform 0.2s;
+  }
+  .dot.active { background: var(--accent); transform: scale(1.4); }
+
+  /* ─── PROGRESS ─── */
+  #progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent4));
+    transition: width 0.4s ease;
+    z-index: 100;
+  }
+
+  /* ─── SLIDE LABEL ─── */
+  .slide-label {
+    position: fixed;
+    top: 16px; right: 20px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    z-index: 100;
+  }
+
+  /* ─── TYPOGRAPHY ─── */
+  h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.1; }
+  h2 { font-size: clamp(1.4rem, 3vw, 2.2rem); font-weight: 700; margin-bottom: 28px; }
+  h3 { font-size: 1.1rem; font-weight: 600; color: var(--accent); margin-bottom: 10px; }
+  p  { line-height: 1.7; color: var(--muted); }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .highlight { color: var(--accent); }
+  .hl-green  { color: var(--accent2); }
+  .hl-red    { color: var(--accent3); }
+  .hl-purple { color: var(--accent4); }
+  .hl-orange { color: var(--accent5); }
+
+  /* ─── GRID ─── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; width: 100%; max-width: 960px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; width: 100%; max-width: 960px; }
+
+  /* ─── CARD ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .card-accent-blue  { border-left: 3px solid var(--accent); }
+  .card-accent-green { border-left: 3px solid var(--accent2); }
+  .card-accent-red   { border-left: 3px solid var(--accent3); }
+  .card-accent-purple{ border-left: 3px solid var(--accent4); }
+  .card-accent-orange{ border-left: 3px solid var(--accent5); }
+
+  /* ─── CODE ─── */
+  pre, code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+  pre {
+    background: #010409;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    width: 100%;
+  }
+  .token-k  { color: #ff7b72; }   /* keyword */
+  .token-s  { color: #a5d6ff; }   /* string */
+  .token-c  { color: #8b949e; }   /* comment */
+  .token-n  { color: #79c0ff; }   /* name */
+  .token-o  { color: #d2a8ff; }   /* operator / env */
+  .token-p  { color: #e6edf3; }   /* plain */
+  .token-num{ color: #f0883e; }   /* number */
+  .prompt   { color: #3fb950; }   /* $ prompt */
+  .cmd      { color: #e6edf3; }
+  .arg      { color: #a5d6ff; }
+  .comment-line { color: #484f58; }
+
+  /* ─── CHAT BUBBLE ─── */
+  .chat-window {
+    background: #010409;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+    max-width: 680px;
+  }
+  .chat-bubble { margin-bottom: 16px; }
+  .bubble-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .bubble-user  .bubble-label { color: var(--accent); }
+  .bubble-bot   .bubble-label { color: var(--accent2); }
+  .bubble-box {
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    max-width: 85%;
+  }
+  .bubble-user  .bubble-box {
+    background: #1c2128;
+    border: 1px solid #2d333b;
+    margin-left: auto;
+    text-align: right;
+  }
+  .bubble-bot .bubble-box {
+    background: #0d1117;
+    border: 1px solid var(--border);
+  }
+  .source-tag {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    padding-left: 4px;
+  }
+
+  /* ─── SVG DIAGRAM ─── */
+  .diagram { width: 100%; max-width: 860px; }
+
+  /* ─── TABLE ─── */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.85rem;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid #21262d;
+    color: var(--text);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  code {
+    background: var(--surface2);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 0.82em;
+    color: var(--accent5);
+  }
+
+  /* ─── LINK ─── */
+  a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  a:hover { color: var(--accent4); text-decoration: underline; }
+
+  /* ─── BADGE PILL ─── */
+  .badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    display: inline-block;
+    margin: 4px;
+    color: var(--muted);
+  }
+
+  /* ─── STEP LIST ─── */
+  .step-list { list-style: none; width: 100%; max-width: 720px; }
+  .step-list li {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .step-list li:last-child { border-bottom: none; }
+  .step-num {
+    min-width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #000;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .step-body { line-height: 1.5; }
+  .step-body strong { display: block; margin-bottom: 2px; color: var(--text); }
+  .step-body span { color: var(--muted); font-size: 0.88rem; }
+
+  /* ─── TITLE SLIDE DECORATION ─── */
+  .hero-glow {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.07;
+    pointer-events: none;
+  }
+
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--muted);
+    margin-top: 16px;
+    max-width: 560px;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .link-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 24px;
+  }
+
+  .link-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 20px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 0.9rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .link-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: var(--text);
+  }
+  .link-icon { font-size: 20px; }
+
+  /* ─── TOKEN VIZ ─── */
+  .token-viz { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; max-width: 720px; }
+  .tok {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.88rem;
+    border: 1px solid transparent;
+  }
+  .tok-a { background: #1a2744; border-color: #1f4288; color: #79c0ff; }
+  .tok-b { background: #1a2a1a; border-color: #1f4a1f; color: #56d364; }
+  .tok-c { background: #2a1a2a; border-color: #4a1f4a; color: #bc8cff; }
+  .tok-d { background: #2a1f0a; border-color: #4a3a0a; color: #ffa657; }
+  .tok-e { background: #2a0f0f; border-color: #4a1f1f; color: #ff7b72; }
+  .tok-id { font-size: 9px; color: var(--muted); display: block; text-align: center; margin-top: 2px; }
+
+  .section-header {
+    width: 100%;
+    max-width: 960px;
+    margin-bottom: 28px;
+  }
+
+  .slide-inner {
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<div class="slide-label" id="slide-label"></div>
+
+<div id="deck">
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 1 — TÍTULO
+  ══════════════════════════════════════════ -->
+  <div class="slide active" data-label="INTRO">
+    <div class="hero-glow" style="background:#58a6ff; top:-100px; left:-100px;"></div>
+    <div class="hero-glow" style="background:#d2a8ff; bottom:-100px; right:-100px;"></div>
+
+    <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Sistema RAG · 2025</span>
+    <h1 style="text-align:center; background: linear-gradient(135deg, #58a6ff, #d2a8ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-top:12px;">
+      RAG<br>Game Provider
+    </h1>
+    <p class="subtitle">
+      Retrieval-Augmented Generation para consulta de documentos privados.<br>
+      Ollama · Groq · Qdrant · PostgreSQL · Docker
+    </p>
+
+    <div class="link-row" style="margin-top:36px;">
+      <a class="link-card" href="https://github.com/cletrix/reals_rag_game-provider" target="_blank">
+        <span class="link-icon">🐙</span>
+        <span style="color:var(--text);">GitHub</span>
+      </a>
+      <a class="link-card" href="https://ollama.com" target="_blank">
+        <span class="link-icon">🦙</span>
+        <span style="color:var(--accent2);">Ollama</span>
+      </a>
+      <a class="link-card" href="https://console.groq.com" target="_blank">
+        <span class="link-icon">⚡</span>
+        <span style="color:var(--groq);">Groq Console</span>
+      </a>
+      <a class="link-card" href="https://pt.casino.guru/jogos-de-casino-gratis/slots/jogar-slot-gates-of-olympus-gratuitamente" target="_blank">
+        <span class="link-icon">🎰</span>
+        <span style="color:var(--accent5);">Gates of Olympus</span>
+      </a>
+    </div>
+
+    <p style="margin-top:48px; font-size:12px; color:var(--border);">← → ou clique nas setas para navegar</p>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 2 — O QUE É RAG
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="CONCEITO">
+    <div class="slide-inner">
+      <h2>O que é <span class="highlight">RAG</span>?</h2>
+
+      <ul class="step-list">
+        <li>
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <strong>Retrieval — Recuperação</strong>
+            <span>A pergunta do usuário é convertida em vetor (embedding) e os trechos mais similares dos documentos são buscados no banco vetorial.</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <strong>Augmented — Augmentação</strong>
+            <span>Os trechos recuperados são injetados no contexto do prompt enviado ao LLM, fornecendo informação factual e específica.</span>
+          </div>
+        </li>
+        <li>
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <strong>Generation — Geração</strong>
+            <span>O LLM (Groq ou Ollama) gera uma resposta fundamentada nos documentos, citando as fontes encontradas.</span>
+          </div>
+        </li>
+      </ul>
+
+      <div style="margin-top:24px; padding:16px 24px; background:var(--surface); border-radius:10px; border:1px solid var(--border); text-align:center; max-width:720px;">
+        <p style="color:var(--muted); font-size:0.9rem;">
+          Resultado: o modelo responde <strong style="color:var(--text);">somente sobre o que está nos seus documentos</strong>,
+          sem alucinar conteúdo externo — e ainda cita de onde veio a informação.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 3 — ARQUITETURA GERAL
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="ARQUITETURA">
+    <div class="slide-inner">
+      <h2>Arquitetura do <span class="highlight">Sistema</span></h2>
+
+      <svg class="diagram" viewBox="0 0 860 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background panels -->
+        <!-- Docker area -->
+        <rect x="10" y="30" width="600" height="310" rx="12" fill="#0d1117" stroke="#0db7ed" stroke-width="1.5" stroke-dasharray="6,4"/>
+        <text x="22" y="22" fill="#0db7ed" font-size="11" font-family="monospace" font-weight="600">🐳 Docker Compose</text>
+
+        <!-- Host area -->
+        <rect x="630" y="30" width="220" height="180" rx="12" fill="#0d1117" stroke="#28a745" stroke-width="1.5" stroke-dasharray="6,4"/>
+        <text x="642" y="22" fill="#28a745" font-size="11" font-family="monospace" font-weight="600">💻 Host (Metal GPU)</text>
+
+        <!-- Boxes inside Docker -->
+        <!-- Web UI -->
+        <rect x="30" y="50" width="140" height="60" rx="8" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="100" y="77" fill="#58a6ff" font-size="12" text-anchor="middle" font-weight="600">🌐 Web UI</text>
+        <text x="100" y="94" fill="#8b949e" font-size="10" text-anchor="middle">:2468</text>
+
+        <!-- RAG Container -->
+        <rect x="220" y="50" width="140" height="60" rx="8" fill="#161b22" stroke="#d2a8ff" stroke-width="1.5"/>
+        <text x="290" y="74" fill="#d2a8ff" font-size="12" text-anchor="middle" font-weight="600">🤖 RAG App</text>
+        <text x="290" y="90" fill="#8b949e" font-size="10" text-anchor="middle">ingest · query</text>
+
+        <!-- Qdrant -->
+        <rect x="30" y="180" width="140" height="60" rx="8" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+        <text x="100" y="205" fill="#ffa657" font-size="12" text-anchor="middle" font-weight="600">🔍 Qdrant</text>
+        <text x="100" y="222" fill="#8b949e" font-size="10" text-anchor="middle">:6333  vetores</text>
+
+        <!-- PostgreSQL -->
+        <rect x="220" y="180" width="140" height="60" rx="8" fill="#161b22" stroke="#56d364" stroke-width="1.5"/>
+        <text x="290" y="205" fill="#56d364" font-size="12" text-anchor="middle" font-weight="600">🐘 PostgreSQL</text>
+        <text x="290" y="222" fill="#8b949e" font-size="10" text-anchor="middle">:5432  histórico</text>
+
+        <!-- LlamaIndex -->
+        <rect x="400" y="110" width="180" height="60" rx="8" fill="#161b22" stroke="#ff7b72" stroke-width="1.5"/>
+        <text x="490" y="135" fill="#ff7b72" font-size="12" text-anchor="middle" font-weight="600">📚 LlamaIndex</text>
+        <text x="490" y="152" fill="#8b949e" font-size="10" text-anchor="middle">pipeline · config</text>
+
+        <!-- Data volume -->
+        <rect x="400" y="250" width="180" height="60" rx="8" fill="#161b22" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <text x="490" y="275" fill="#8b949e" font-size="12" text-anchor="middle" font-weight="600">📁 data/raw/</text>
+        <text x="490" y="292" fill="#6e7681" font-size="10" text-anchor="middle">PDF · MD · TXT</text>
+
+        <!-- Ollama host -->
+        <rect x="648" y="55" width="185" height="60" rx="8" fill="#161b22" stroke="#28a745" stroke-width="1.5"/>
+        <text x="740" y="79" fill="#28a745" font-size="12" text-anchor="middle" font-weight="600">🦙 Ollama</text>
+        <text x="740" y="96" fill="#8b949e" font-size="10" text-anchor="middle">nomic-embed-text</text>
+
+        <!-- Groq cloud -->
+        <rect x="648" y="160" width="185" height="60" rx="8" fill="#161b22" stroke="#f55036" stroke-width="1.5"/>
+        <text x="740" y="184" fill="#f55036" font-size="12" text-anchor="middle" font-weight="600">⚡ Groq Cloud</text>
+        <text x="740" y="201" fill="#8b949e" font-size="10" text-anchor="middle">llama-3.3-70b</text>
+
+        <!-- Arrows -->
+        <!-- Web ↔ RAG -->
+        <line x1="170" y1="80" x2="220" y2="80" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- Web → Qdrant -->
+        <line x1="100" y1="110" x2="100" y2="180" stroke="#ffa657" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- Web → Postgres -->
+        <line x1="200" y1="200" x2="220" y2="200" stroke="#56d364" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- RAG → Qdrant -->
+        <line x1="250" y1="110" x2="135" y2="185" stroke="#ffa657" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- RAG → Postgres -->
+        <line x1="290" y1="110" x2="290" y2="180" stroke="#56d364" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- LlamaIndex ↔ Qdrant -->
+        <line x1="400" y1="145" x2="170" y2="200" stroke="#ffa657" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+        <!-- LlamaIndex → Ollama (host) -->
+        <line x1="580" y1="130" x2="648" y2="85" stroke="#28a745" stroke-width="1.5" marker-end="url(#arr)"/>
+        <!-- LlamaIndex → Groq -->
+        <line x1="580" y1="155" x2="648" y2="185" stroke="#f55036" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#arr)"/>
+        <!-- Data → LlamaIndex -->
+        <line x1="490" y1="250" x2="490" y2="170" stroke="#8b949e" stroke-width="1.2" marker-end="url(#arr)"/>
+
+        <!-- host.docker.internal label -->
+        <line x1="580" y1="85" x2="648" y2="85" stroke="#28a745" stroke-width="0" />
+        <text x="612" y="78" fill="#28a745" font-size="9" text-anchor="middle">host.docker.internal</text>
+        <text x="620" y="200" fill="#f55036" font-size="9" text-anchor="middle">API HTTPS</text>
+
+        <!-- arrowhead marker -->
+        <defs>
+          <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="#484f58"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 4 — OLLAMA
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="OLLAMA">
+    <div class="slide-inner">
+      <div class="section-header" style="display:flex; align-items:center; gap:16px;">
+        <span style="font-size:3rem;">🦙</span>
+        <div>
+          <h2 style="margin-bottom:4px;">Ollama — <span class="hl-green">LLM Local</span></h2>
+          <a href="https://ollama.com" target="_blank" style="font-size:0.85rem;">ollama.com</a>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card card-accent-green">
+          <h3>O que é</h3>
+          <p style="font-size:0.9rem;">Runtime para modelos de linguagem que roda <strong style="color:var(--text);">100% local</strong>. No Mac usa Metal GPU. Nenhum dado sai do seu computador.</p>
+        </div>
+        <div class="card card-accent-green">
+          <h3>Papel no projeto</h3>
+          <p style="font-size:0.9rem;">Gera os <strong style="color:var(--text);">embeddings</strong> (vetores numéricos dos documentos) via <code>nomic-embed-text</code>. Também pode ser usado como LLM de inferência no modo offline.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>Modelos em uso</h3>
+          <div style="margin-top:8px;">
+            <span class="badge" style="color:var(--accent2); border-color:var(--accent2);">nomic-embed-text</span>
+            <span class="badge" style="color:var(--accent);">llama3.1:8b</span>
+            <span class="badge" style="color:var(--accent);">qwen2.5:7b</span>
+          </div>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>Porta de acesso</h3>
+          <p style="font-size:0.9rem;">Roda na porta <code>11434</code> do host. Os containers Docker acessam via <code>host.docker.internal:11434</code> sem containerizar o Ollama (preserva Metal GPU).</p>
+        </div>
+      </div>
+
+      <pre style="margin-top:20px; max-width:960px;">
+<span class="comment-line"># Instalar e puxar modelos</span>
+<span class="prompt">$</span> <span class="cmd">brew install ollama</span>
+<span class="prompt">$</span> <span class="cmd">ollama pull</span> <span class="arg">nomic-embed-text</span>
+<span class="prompt">$</span> <span class="cmd">ollama pull</span> <span class="arg">llama3.1:8b</span>
+<span class="prompt">$</span> <span class="cmd">ollama list</span>          <span class="comment-line">  # ver modelos instalados</span>
+<span class="prompt">$</span> <span class="cmd">ollama serve</span>         <span class="comment-line">  # inicia o servidor (automático no Mac)</span></pre>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 5 — GROQ
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="GROQ">
+    <div class="slide-inner">
+      <div class="section-header" style="display:flex; align-items:center; gap:16px;">
+        <span style="font-size:3rem;">⚡</span>
+        <div>
+          <h2 style="margin-bottom:4px;">Groq — <span class="hl-red">Inferência Ultra-Rápida</span></h2>
+          <a href="https://console.groq.com" target="_blank" style="font-size:0.85rem;">console.groq.com</a>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card card-accent-red">
+          <h3>O que é</h3>
+          <p style="font-size:0.9rem;">Serviço de cloud com chips <strong style="color:var(--text);">LPU (Language Processing Unit)</strong> proprietários. Inferência 10-20× mais rápida que GPUs convencionais. Tier gratuito generoso.</p>
+        </div>
+        <div class="card card-accent-red">
+          <h3>Papel no projeto</h3>
+          <p style="font-size:0.9rem;">LLM padrão de inferência quando <code>GROQ_API_KEY</code> está configurado. Recebe o contexto recuperado do Qdrant e gera a resposta final.</p>
+        </div>
+        <div class="card card-accent-orange">
+          <h3>Modelo padrão</h3>
+          <div style="margin-top:8px;">
+            <span class="badge" style="color:var(--accent5); border-color:var(--accent5);">llama-3.3-70b-versatile</span>
+            <span class="badge">mixtral-8x7b-32768</span>
+            <span class="badge">gemma2-9b-it</span>
+          </div>
+        </div>
+        <div class="card card-accent-orange">
+          <h3>Switching automático</h3>
+          <p style="font-size:0.9rem;">Se <code>GROQ_API_KEY</code> estiver no <code>.env</code>, usa Groq. Se não estiver, cai automaticamente para Ollama local. Pode trocar pelo painel web.</p>
+        </div>
+      </div>
+
+      <pre style="margin-top:20px; max-width:960px;">
+<span class="comment-line"># .env — escolha do provider</span>
+<span class="token-o">GROQ_API_KEY</span>=<span class="token-s">gsk_xxxxxxxxxxxxxxxxxxxx</span>
+<span class="token-o">LLM_MODEL</span>=<span class="token-s">llama-3.3-70b-versatile</span>
+<span class="comment-line">
+# config.py — lógica de switching</span>
+<span class="token-k">if</span> groq_key:
+    Settings.llm = <span class="token-n">Groq</span>(model=model, api_key=groq_key)
+<span class="token-k">else</span>:
+    Settings.llm = <span class="token-n">Ollama</span>(model=model, base_url=<span class="token-s">"http://host.docker.internal:11434"</span>)</pre>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 6 — HARNESS / CLAUDE CODE
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="HARNESS">
+    <div class="slide-inner">
+      <div class="section-header" style="display:flex; align-items:center; gap:16px;">
+        <span style="font-size:3rem;">🤖</span>
+        <div>
+          <h2 style="margin-bottom:4px;">Claude Code <span class="hl-purple">Harness</span></h2>
+          <p style="font-size:0.85rem; color:var(--muted);">Ambiente de execução do Claude como agente de desenvolvimento</p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card card-accent-purple">
+          <h3>Skills</h3>
+          <p style="font-size:0.85rem;">Arquivos <code>.skill</code> (ZIP) com <code>SKILL.md</code> — conhecimento especializado instalável que o Claude invoca automaticamente no contexto certo.</p>
+        </div>
+        <div class="card card-accent-purple">
+          <h3>Memory</h3>
+          <p style="font-size:0.85rem;">Arquivos <code>.md</code> em <code>~/.claude/projects/…/memory/</code>. Persiste preferências, feedbacks e contexto de projeto entre conversas.</p>
+        </div>
+        <div class="card card-accent-purple">
+          <h3>Hooks</h3>
+          <p style="font-size:0.85rem;">Comandos shell disparados em eventos (<code>PostToolUse</code>, etc.) via <code>settings.json</code>. O harness executa, não o Claude.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>Agentes / Subagentes</h3>
+          <p style="font-size:0.85rem;">Claude pode spawnar agentes especializados (<code>Explore</code>, <code>Plan</code>, <code>claude-code-guide</code>) em paralelo para tarefas independentes.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>MCP Servers</h3>
+          <p style="font-size:0.85rem;">Model Context Protocol — ferramentas externas (Docker, Redis, Gmail, Drive) expostas como funções para o Claude invocar durante a conversa.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>Permissões</h3>
+          <p style="font-size:0.85rem;"><code>settings.json</code> define o que pode ser executado automaticamente. Ações destrutivas ou com blast-radius alto pedem confirmação.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 7 — DOCKER STRUCTURE
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="DOCKER">
+    <div class="slide-inner">
+      <h2>Estrutura <span style="color:var(--docker);">Docker</span></h2>
+
+      <svg class="diagram" viewBox="0 0 860 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Outer box -->
+        <rect x="10" y="10" width="840" height="270" rx="14" fill="#0d1117" stroke="#0db7ed" stroke-width="1.5"/>
+        <text x="26" y="32" fill="#0db7ed" font-size="12" font-family="monospace" font-weight="700">docker-compose.yml</text>
+
+        <!-- Service cards -->
+        <!-- web -->
+        <rect x="30" y="50" width="180" height="200" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="120" y="80" fill="#58a6ff" font-size="13" font-weight="700" text-anchor="middle">🌐 web</text>
+        <text x="120" y="98" fill="#8b949e" font-size="10" text-anchor="middle">landf_web</text>
+        <line x1="50" y1="106" x2="190" y2="106" stroke="#21262d" stroke-width="1"/>
+        <text x="40" y="124" fill="#6e7681" font-size="9">port: 2468→8000</text>
+        <text x="40" y="140" fill="#6e7681" font-size="9">image: ./web</text>
+        <text x="40" y="156" fill="#6e7681" font-size="9">cmd: uvicorn main:app</text>
+        <text x="40" y="172" fill="#3fb950" font-size="9">📂 ./rag → /app/rag</text>
+        <text x="40" y="188" fill="#3fb950" font-size="9">📂 ./web → /app</text>
+        <text x="40" y="204" fill="#3fb950" font-size="9">📂 ./data → /app/data</text>
+        <text x="40" y="228" fill="#ffa657" font-size="9">depends: qdrant+postgres</text>
+
+        <!-- rag -->
+        <rect x="230" y="50" width="180" height="200" rx="10" fill="#161b22" stroke="#d2a8ff" stroke-width="1.5"/>
+        <text x="320" y="80" fill="#d2a8ff" font-size="13" font-weight="700" text-anchor="middle">🤖 rag</text>
+        <text x="320" y="98" fill="#8b949e" font-size="10" text-anchor="middle">landf_rag</text>
+        <line x1="250" y1="106" x2="390" y2="106" stroke="#21262d" stroke-width="1"/>
+        <text x="240" y="124" fill="#6e7681" font-size="9">image: ./app</text>
+        <text x="240" y="140" fill="#6e7681" font-size="9">cmd: python query.py</text>
+        <text x="240" y="156" fill="#6e7681" font-size="9">stdin_open: true</text>
+        <text x="240" y="172" fill="#3fb950" font-size="9">📂 ./data → /app/data</text>
+        <text x="240" y="188" fill="#3fb950" font-size="9">📂 ./rag → /app/rag</text>
+        <text x="240" y="204" fill="#56d364" font-size="9">extra: host.docker.internal</text>
+        <text x="240" y="228" fill="#ffa657" font-size="9">depends: qdrant</text>
+
+        <!-- qdrant -->
+        <rect x="430" y="50" width="180" height="200" rx="10" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+        <text x="520" y="80" fill="#ffa657" font-size="13" font-weight="700" text-anchor="middle">🔍 qdrant</text>
+        <text x="520" y="98" fill="#8b949e" font-size="10" text-anchor="middle">landf_qdrant</text>
+        <line x1="450" y1="106" x2="590" y2="106" stroke="#21262d" stroke-width="1"/>
+        <text x="440" y="124" fill="#6e7681" font-size="9">image: qdrant/qdrant:latest</text>
+        <text x="440" y="140" fill="#6e7681" font-size="9">port: 6333 (REST)</text>
+        <text x="440" y="156" fill="#6e7681" font-size="9">port: 6334 (gRPC)</text>
+        <text x="440" y="172" fill="#3fb950" font-size="9">📂 ./qdrant_data → storage</text>
+        <text x="440" y="196" fill="#0db7ed" font-size="9">healthcheck: TCP :6333</text>
+
+        <!-- postgres -->
+        <rect x="630" y="50" width="200" height="200" rx="10" fill="#161b22" stroke="#56d364" stroke-width="1.5"/>
+        <text x="730" y="80" fill="#56d364" font-size="13" font-weight="700" text-anchor="middle">🐘 postgres</text>
+        <text x="730" y="98" fill="#8b949e" font-size="10" text-anchor="middle">landf_postgres</text>
+        <line x1="650" y1="106" x2="810" y2="106" stroke="#21262d" stroke-width="1"/>
+        <text x="640" y="124" fill="#6e7681" font-size="9">image: postgres:16-alpine</text>
+        <text x="640" y="140" fill="#6e7681" font-size="9">port: 5432</text>
+        <text x="640" y="156" fill="#6e7681" font-size="9">user/pass: rag/rag</text>
+        <text x="640" y="172" fill="#6e7681" font-size="9">db: ragdb</text>
+        <text x="640" y="188" fill="#3fb950" font-size="9">📂 ./postgres_data → data</text>
+        <text x="640" y="204" fill="#3fb950" font-size="9">📄 ./db/init.sql</text>
+        <text x="640" y="228" fill="#0db7ed" font-size="9">healthcheck: pg_isready</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 8 — TOKENIZAÇÃO
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="TOKENIZAÇÃO">
+    <div class="slide-inner">
+      <h2>Como funciona a <span class="hl-purple">Tokenização</span></h2>
+
+      <div style="width:100%; max-width:720px; margin-bottom:24px;">
+        <p style="text-align:center; color:var(--muted); font-size:0.9rem; margin-bottom:16px;">
+          A frase abaixo é quebrada em <strong style="color:var(--text);">tokens</strong> antes de entrar no modelo:
+        </p>
+        <div class="token-viz" style="justify-content:center;">
+          <div class="tok tok-a">Quais<span class="tok-id">#1</span></div>
+          <div class="tok tok-b"> são<span class="tok-id">#2</span></div>
+          <div class="tok tok-c"> os<span class="tok-id">#3</span></div>
+          <div class="tok tok-d"> slots<span class="tok-id">#4</span></div>
+          <div class="tok tok-e"> mais<span class="tok-id">#5</span></div>
+          <div class="tok tok-a"> populares<span class="tok-id">#6</span></div>
+          <div class="tok tok-b">?<span class="tok-id">#7</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="max-width:720px;">
+        <div class="card card-accent-purple">
+          <h3>Embedding (Ollama)</h3>
+          <p style="font-size:0.85rem;">Cada token vira um número. O modelo <code>nomic-embed-text</code> transforma o texto em um vetor de <strong style="color:var(--text);">768 dimensões</strong>. Textos similares têm vetores próximos no espaço.</p>
+        </div>
+        <div class="card card-accent-purple">
+          <h3>Chunking (LlamaIndex)</h3>
+          <p style="font-size:0.85rem;">Documentos são divididos em pedaços de <code>1024 tokens</code> com sobreposição de <code>200 tokens</code> para não perder contexto entre chunks.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>Context Window</h3>
+          <p style="font-size:0.85rem;">O LLM tem um limite de tokens por request. O sistema recupera apenas os <code>similarity_top_k=2</code> chunks mais relevantes para caber no contexto.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>tokens_total no banco</h3>
+          <p style="font-size:0.85rem;">Cada query salva <code>tokens_total</code> no PostgreSQL, permitindo monitorar consumo e custo ao longo do tempo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 9 — ONDE ARMAZENA
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="STORAGE">
+    <div class="slide-inner">
+      <h2>Onde os <span class="highlight">Dados</span> são Armazenados</h2>
+
+      <div class="grid-2" style="max-width:960px;">
+        <div>
+          <h3 style="color:var(--accent5); margin-bottom:16px;">📁 Sistema de Arquivos</h3>
+          <table>
+            <thead>
+              <tr><th>Pasta</th><th>Conteúdo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>data/raw/</code></td><td>PDFs, MDs, TXTs — docs originais</td></tr>
+              <tr><td><code>data/indexed.json</code></td><td>Mapa arquivo → mtime (controle de re-index)</td></tr>
+              <tr><td><code>data/embed_speed.json</code></td><td>Velocidade de embedding medida por modelo</td></tr>
+              <tr><td><code>qdrant_data/</code></td><td>Volume persistido do Qdrant (vetores)</td></tr>
+              <tr><td><code>postgres_data/</code></td><td>Volume persistido do PostgreSQL</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3 style="color:var(--accent2); margin-bottom:16px;">🗄️ Bancos de Dados</h3>
+          <div class="card card-accent-orange" style="margin-bottom:16px;">
+            <h3 style="color:var(--accent5);">Qdrant (vetor)</h3>
+            <p style="font-size:0.85rem;">Collection <code>landf_docs</code> — armazena vetores de 768d + metadados (<code>file_name</code>, <code>page_label</code>, texto do chunk). Busca por similaridade cosine.</p>
+          </div>
+          <div class="card card-accent-green">
+            <h3 style="color:var(--accent2);">PostgreSQL (relacional)</h3>
+            <p style="font-size:0.85rem;">Tabelas <code>queries</code> (histórico de perguntas/respostas) e <code>settings</code> (config dinâmica: provider, modelo, top_k). Persistido em <code>postgres_data/</code>.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px; background:#010409; border:1px solid var(--border); border-radius:10px; padding:16px 24px; width:100%; max-width:960px;">
+        <p style="font-size:0.82rem; color:var(--muted); font-family:monospace;">
+          <span style="color:var(--accent2);">✓</span> Qdrant data → <code style="color:var(--accent5);">./qdrant_data</code> (host volume, sobrevive restart)<br>
+          <span style="color:var(--accent2);">✓</span> Postgres data → <code style="color:var(--accent5);">./postgres_data</code> (host volume, sobrevive restart)<br>
+          <span style="color:var(--accent2);">✓</span> Docs raw → <code style="color:var(--accent5);">./data/raw</code> (montado em todos containers que precisam)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 10 — BANCO DE DADOS
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="BANCO">
+    <div class="slide-inner">
+      <h2>O que há no <span class="hl-green">Banco de Dados</span></h2>
+
+      <div class="grid-2">
+        <div>
+          <h3 style="color:var(--accent2); margin-bottom:12px;">🐘 PostgreSQL — tabela <code>queries</code></h3>
+          <table>
+            <thead>
+              <tr><th>Coluna</th><th>Tipo</th><th>Descrição</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>UUID</td><td>PK auto-gerado</td></tr>
+              <tr><td><code>question</code></td><td>TEXT</td><td>Pergunta do usuário</td></tr>
+              <tr><td><code>answer</code></td><td>TEXT</td><td>Resposta do LLM</td></tr>
+              <tr><td><code>sources</code></td><td>JSONB</td><td>Documentos citados</td></tr>
+              <tr><td><code>elapsed_ms</code></td><td>INT</td><td>Tempo de resposta</td></tr>
+              <tr><td><code>llm_provider</code></td><td>VARCHAR</td><td>groq / ollama</td></tr>
+              <tr><td><code>llm_model</code></td><td>VARCHAR</td><td>Nome do modelo usado</td></tr>
+              <tr><td><code>tokens_total</code></td><td>INT</td><td>Tokens consumidos</td></tr>
+              <tr><td><code>created_at</code></td><td>TIMESTAMPTZ</td><td>Timestamp UTC</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3 style="color:var(--accent5); margin-bottom:12px;">🔍 Qdrant — collection <code>landf_docs</code></h3>
+          <div class="card" style="margin-bottom:16px;">
+            <p style="font-size:0.85rem; color:var(--muted);">Cada ponto armazena:</p>
+            <pre style="margin-top:10px; font-size:0.78rem; padding:12px;">
+{
+  <span class="token-s">"id"</span>: <span class="token-s">"uuid"</span>,
+  <span class="token-s">"vector"</span>: [<span class="token-num">0.12</span>, <span class="token-num">-0.04</span>, ...] <span class="comment-line">// 768d</span>,
+  <span class="token-s">"payload"</span>: {
+    <span class="token-s">"file_name"</span>: <span class="token-s">"gates-rules.pdf"</span>,
+    <span class="token-s">"page_label"</span>: <span class="token-s">"3"</span>,
+    <span class="token-s">"text"</span>: <span class="token-s">"O slot Gates of Olympus..."</span>
+  }
+}</pre>
+          </div>
+          <div class="card card-accent-green">
+            <h3 style="color:var(--accent2);">tabela <code>settings</code></h3>
+            <table style="font-size:0.8rem; margin-top:8px;">
+              <tr><td><code>llm_provider</code></td><td>groq</td></tr>
+              <tr><td><code>groq_model</code></td><td>llama-3.3-70b-versatile</td></tr>
+              <tr><td><code>ollama_model</code></td><td>llama3.1:8b</td></tr>
+              <tr><td><code>similarity_top_k</code></td><td>2</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 11 — COMANDOS
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="COMANDOS">
+    <div class="slide-inner">
+      <h2>Lista de <span class="highlight">Comandos</span></h2>
+
+      <div class="grid-2">
+        <pre>
+<span class="comment-line"># ─── SETUP INICIAL ────────────────────</span>
+<span class="prompt">$</span> <span class="cmd">ollama pull</span> <span class="arg">nomic-embed-text</span>
+<span class="prompt">$</span> <span class="cmd">ollama pull</span> <span class="arg">llama3.1:8b</span>
+<span class="prompt">$</span> <span class="cmd">docker compose up -d</span> <span class="arg">qdrant postgres</span>
+
+<span class="comment-line"># ─── INDEXAR DOCUMENTOS ───────────────</span>
+<span class="prompt">$</span> <span class="cmd">cp</span> <span class="arg">meu-doc.pdf data/raw/</span>
+<span class="prompt">$</span> <span class="cmd">docker compose run --rm rag</span> <span class="arg">python ingest.py</span>
+
+<span class="comment-line"># ─── INTERFACE WEB ────────────────────</span>
+<span class="prompt">$</span> <span class="cmd">docker compose up -d</span>
+<span class="prompt">$</span> <span class="cmd">open</span> <span class="arg">http://localhost:2468</span>
+
+<span class="comment-line"># ─── QUERY INTERATIVO (CLI) ───────────</span>
+<span class="prompt">$</span> <span class="cmd">docker compose run --rm -it rag</span></pre>
+
+        <pre>
+<span class="comment-line"># ─── MAKEFILE SHORTCUTS ───────────────</span>
+<span class="prompt">$</span> <span class="cmd">make up</span>        <span class="comment-line">  # sobe tudo</span>
+<span class="prompt">$</span> <span class="cmd">make down</span>      <span class="comment-line">  # para tudo</span>
+<span class="prompt">$</span> <span class="cmd">make ingest</span>    <span class="comment-line">  # indexa docs novos</span>
+<span class="prompt">$</span> <span class="cmd">make query</span>     <span class="comment-line">  # abre CLI de query</span>
+<span class="prompt">$</span> <span class="cmd">make logs</span>      <span class="comment-line">  # logs dos containers</span>
+<span class="prompt">$</span> <span class="cmd">make web</span>       <span class="comment-line">  # abre o navegador</span>
+
+<span class="comment-line"># ─── MONITORAMENTO ────────────────────</span>
+<span class="prompt">$</span> <span class="cmd">docker compose logs -f</span> <span class="arg">web</span>
+<span class="prompt">$</span> <span class="cmd">open</span> <span class="arg">http://localhost:6333/dashboard</span>
+<span class="prompt">$</span> <span class="cmd">ollama ps</span>      <span class="comment-line">  # modelos carregados</span>
+
+<span class="comment-line"># ─── POSTGRES DIRETO ──────────────────</span>
+<span class="prompt">$</span> <span class="cmd">docker exec -it landf_postgres</span> <span class="arg">psql -U rag ragdb</span>
+<span class="prompt">ragdb=#</span> <span class="cmd">SELECT</span> <span class="arg">count(*), llm_provider FROM queries GROUP BY 2;</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 12 — EXEMPLO DE CHAT
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="CHAT">
+    <div class="slide-inner">
+      <h2>Exemplo de <span class="hl-purple">Chat</span></h2>
+
+      <div class="grid-2" style="align-items:start;">
+        <div>
+          <p style="font-size:0.82rem; color:var(--muted); margin-bottom:12px; text-align:center;">Interface CLI (<code>query.py</code>)</p>
+          <pre style="font-size:0.78rem;">
+<span style="color:#484f58;">  LLM:       llama-3.3-70b-versatile</span>
+<span style="color:#484f58;">  Embedding: nomic-embed-text</span>
+<span style="color:#484f58;">  Chunks:    1,248</span>
+
+<span style="color:var(--accent);">RAG pronto. Digite sua pergunta.</span>
+
+<span style="color:var(--accent2);">Pergunta:</span> Qual o RTP do Gates of Olympus?
+
+<span style="color:var(--accent4);">Resposta:</span>
+O slot Gates of Olympus possui um RTP
+(Return to Player) de 96.50%, podendo
+chegar a 96.51% na versão Buy Feature.
+O jogo é classificado como alta
+volatilidade.
+
+<span style="color:#484f58;">Fontes:</span>
+<span style="color:#484f58;">  [1] gates-rules.pdf p.2 (score: 0.912)</span>
+<span style="color:#484f58;">  [2] paytable.pdf p.1  (score: 0.887)</span>
+
+<span style="color:#484f58;">  tempo: 1.3s</span></pre>
+        </div>
+
+        <div>
+          <p style="font-size:0.82rem; color:var(--muted); margin-bottom:12px; text-align:center;">Interface Web (<code>localhost:2468</code>)</p>
+          <div class="chat-window">
+            <div class="chat-bubble bubble-user">
+              <div class="bubble-label">Usuário</div>
+              <div class="bubble-box">Quais são os símbolos especiais do Gates of Olympus?</div>
+            </div>
+            <div class="chat-bubble bubble-bot">
+              <div class="bubble-label">RAG · groq · llama-3.3-70b</div>
+              <div class="bubble-box">
+                O Gates of Olympus possui os seguintes símbolos especiais:
+                <br><br>
+                <strong>⚡ Zeus</strong> — símbolo mais valioso, paga 25× o bet<br>
+                <strong>🟡 Scatter</strong> — ativa os Free Spins (4+ símbolos)<br>
+                <strong>✨ Multiplier</strong> — multiplica ganhos durante Free Spins<br>
+                <br>
+                Não há Wilds convencionais.
+                <div class="source-tag">📄 gates-manual.pdf p.4 · score 0.934 · 1.1s</div>
+              </div>
+            </div>
+            <div class="chat-bubble bubble-user">
+              <div class="bubble-label">Usuário</div>
+              <div class="bubble-box">Quantos free spins são concedidos?</div>
+            </div>
+            <div class="chat-bubble bubble-bot">
+              <div class="bubble-label">RAG · groq · llama-3.3-70b</div>
+              <div class="bubble-box">
+                São concedidos <strong>15 Free Spins</strong> ao acionar o bonus. É possível retriggerar obtendo mais 4+ Scatters durante o bonus.
+                <div class="source-tag">📄 gates-rules.pdf p.2 · score 0.921 · 0.9s</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 13 — FLUXO DE INDEXAÇÃO
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="INGEST">
+    <div class="slide-inner">
+      <h2>Fluxo de <span class="hl-orange">Indexação</span></h2>
+
+      <svg class="diagram" viewBox="0 0 860 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Steps -->
+        <!-- 1 -->
+        <rect x="10" y="80" width="130" height="80" rx="10" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+        <text x="75" y="112" fill="#ffa657" font-size="12" font-weight="700" text-anchor="middle">📁 data/raw/</text>
+        <text x="75" y="132" fill="#8b949e" font-size="10" text-anchor="middle">PDF · MD · TXT</text>
+
+        <!-- arrow -->
+        <line x1="140" y1="120" x2="175" y2="120" stroke="#484f58" stroke-width="2" marker-end="url(#a2)"/>
+        <text x="157" y="112" fill="#6e7681" font-size="9" text-anchor="middle">load</text>
+
+        <!-- 2 -->
+        <rect x="175" y="80" width="130" height="80" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="240" y="112" fill="#58a6ff" font-size="12" font-weight="700" text-anchor="middle">📚 LlamaIndex</text>
+        <text x="240" y="132" fill="#8b949e" font-size="10" text-anchor="middle">SimpleDirectoryReader</text>
+
+        <!-- arrow -->
+        <line x1="305" y1="120" x2="340" y2="120" stroke="#484f58" stroke-width="2" marker-end="url(#a2)"/>
+        <text x="322" y="112" fill="#6e7681" font-size="9" text-anchor="middle">split</text>
+
+        <!-- 3 -->
+        <rect x="340" y="80" width="130" height="80" rx="10" fill="#161b22" stroke="#d2a8ff" stroke-width="1.5"/>
+        <text x="405" y="108" fill="#d2a8ff" font-size="12" font-weight="700" text-anchor="middle">✂️ Chunks</text>
+        <text x="405" y="126" fill="#8b949e" font-size="10" text-anchor="middle">1024 tok</text>
+        <text x="405" y="142" fill="#8b949e" font-size="10" text-anchor="middle">overlap 200</text>
+
+        <!-- arrow -->
+        <line x1="470" y1="120" x2="505" y2="120" stroke="#484f58" stroke-width="2" marker-end="url(#a2)"/>
+        <text x="487" y="112" fill="#6e7681" font-size="9" text-anchor="middle">embed</text>
+
+        <!-- 4 -->
+        <rect x="505" y="80" width="130" height="80" rx="10" fill="#161b22" stroke="#28a745" stroke-width="1.5"/>
+        <text x="570" y="108" fill="#28a745" font-size="12" font-weight="700" text-anchor="middle">🦙 Ollama</text>
+        <text x="570" y="126" fill="#8b949e" font-size="10" text-anchor="middle">nomic-embed-text</text>
+        <text x="570" y="142" fill="#8b949e" font-size="10" text-anchor="middle">→ 768d vector</text>
+
+        <!-- arrow -->
+        <line x1="635" y1="120" x2="670" y2="120" stroke="#484f58" stroke-width="2" marker-end="url(#a2)"/>
+        <text x="652" y="112" fill="#6e7681" font-size="9" text-anchor="middle">store</text>
+
+        <!-- 5 -->
+        <rect x="670" y="80" width="175" height="80" rx="10" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+        <text x="757" y="108" fill="#ffa657" font-size="12" font-weight="700" text-anchor="middle">🔍 Qdrant</text>
+        <text x="757" y="126" fill="#8b949e" font-size="10" text-anchor="middle">collection: landf_docs</text>
+        <text x="757" y="142" fill="#8b949e" font-size="10" text-anchor="middle">vetores indexados</text>
+
+        <!-- step labels -->
+        <text x="75" y="60" fill="#484f58" font-size="10" text-anchor="middle">PASSO 1</text>
+        <text x="240" y="60" fill="#484f58" font-size="10" text-anchor="middle">PASSO 2</text>
+        <text x="405" y="60" fill="#484f58" font-size="10" text-anchor="middle">PASSO 3</text>
+        <text x="570" y="60" fill="#484f58" font-size="10" text-anchor="middle">PASSO 4</text>
+        <text x="757" y="60" fill="#484f58" font-size="10" text-anchor="middle">PASSO 5</text>
+
+        <!-- speed note -->
+        <text x="430" y="210" fill="#6e7681" font-size="11" text-anchor="middle">Velocidade medida em embed_speed.json → usada para estimar tempo nas próximas indexações</text>
+
+        <defs>
+          <marker id="a2" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="#484f58"/>
+          </marker>
+        </defs>
+      </svg>
+
+      <div style="display:flex; gap:16px; width:100%; max-width:860px; margin-top:8px;">
+        <div class="card card-accent-orange" style="flex:1;">
+          <h3 style="color:var(--accent5);">Incremental</h3>
+          <p style="font-size:0.82rem;">Apenas arquivos novos ou modificados (via mtime) são reindexados. Arquivos já indexados são pulados automaticamente.</p>
+        </div>
+        <div class="card card-accent-green" style="flex:1;">
+          <h3 style="color:var(--accent2);">Estimativa de tempo</h3>
+          <p style="font-size:0.82rem;">Antes de indexar, calcula chunks reais e exibe estimativa baseada na velocidade medida anteriormente em <code>embed_speed.json</code>.</p>
+        </div>
+        <div class="card card-accent-blue" style="flex:1;">
+          <h3>Dashboard</h3>
+          <p style="font-size:0.82rem;">Progresso visível em <code>localhost:6333/dashboard</code> do Qdrant e nos logs do container <code>landf_rag</code>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 14 — FLUXO DE QUERY
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="QUERY">
+    <div class="slide-inner">
+      <h2>Fluxo de <span class="highlight">Query</span></h2>
+
+      <svg class="diagram" viewBox="0 0 860 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- user -->
+        <rect x="10" y="90" width="110" height="60" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="65" y="118" fill="#58a6ff" font-size="12" font-weight="700" text-anchor="middle">👤 Usuário</text>
+        <text x="65" y="135" fill="#8b949e" font-size="10" text-anchor="middle">pergunta</text>
+
+        <!-- arrow -->
+        <line x1="120" y1="120" x2="150" y2="120" stroke="#484f58" stroke-width="2" marker-end="url(#a3)"/>
+
+        <!-- ollama embed -->
+        <rect x="150" y="90" width="130" height="60" rx="10" fill="#161b22" stroke="#28a745" stroke-width="1.5"/>
+        <text x="215" y="114" fill="#28a745" font-size="11" font-weight="700" text-anchor="middle">🦙 Ollama</text>
+        <text x="215" y="130" fill="#8b949e" font-size="10" text-anchor="middle">embed pergunta</text>
+        <text x="215" y="144" fill="#8b949e" font-size="9" text-anchor="middle">→ vetor 768d</text>
+
+        <!-- arrow -->
+        <line x1="280" y1="120" x2="310" y2="120" stroke="#484f58" stroke-width="2" marker-end="url(#a3)"/>
+
+        <!-- qdrant search -->
+        <rect x="310" y="90" width="130" height="60" rx="10" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+        <text x="375" y="114" fill="#ffa657" font-size="11" font-weight="700" text-anchor="middle">🔍 Qdrant</text>
+        <text x="375" y="130" fill="#8b949e" font-size="10" text-anchor="middle">top-2 similar</text>
+        <text x="375" y="144" fill="#8b949e" font-size="9" text-anchor="middle">chunks</text>
+
+        <!-- arrow -->
+        <line x1="440" y1="120" x2="470" y2="120" stroke="#484f58" stroke-width="2" marker-end="url(#a3)"/>
+
+        <!-- llm -->
+        <rect x="470" y="70" width="150" height="100" rx="10" fill="#161b22" stroke="#f55036" stroke-width="1.5"/>
+        <text x="545" y="100" fill="#f55036" font-size="11" font-weight="700" text-anchor="middle">⚡ LLM</text>
+        <text x="545" y="118" fill="#8b949e" font-size="9" text-anchor="middle">Groq / Ollama</text>
+        <text x="545" y="134" fill="#8b949e" font-size="9" text-anchor="middle">contexto + chunks</text>
+        <text x="545" y="150" fill="#8b949e" font-size="9" text-anchor="middle">→ resposta</text>
+
+        <!-- arrow -->
+        <line x1="620" y1="120" x2="650" y2="120" stroke="#484f58" stroke-width="2" marker-end="url(#a3)"/>
+
+        <!-- postgres save -->
+        <rect x="650" y="90" width="130" height="60" rx="10" fill="#161b22" stroke="#56d364" stroke-width="1.5"/>
+        <text x="715" y="114" fill="#56d364" font-size="11" font-weight="700" text-anchor="middle">🐘 PostgreSQL</text>
+        <text x="715" y="130" fill="#8b949e" font-size="10" text-anchor="middle">salva histórico</text>
+        <text x="715" y="144" fill="#8b949e" font-size="9" text-anchor="middle">tokens · elapsed</text>
+
+        <!-- return arrow -->
+        <path d="M 715 90 Q 715 30 545 30 Q 375 30 65 30 L 65 90" stroke="#484f58" stroke-width="1.5" fill="none" stroke-dasharray="5,3" marker-end="url(#a3)"/>
+        <text x="400" y="22" fill="#6e7681" font-size="10" text-anchor="middle">resposta + fontes exibidas ao usuário</text>
+
+        <defs>
+          <marker id="a3" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="#484f58"/>
+          </marker>
+        </defs>
+      </svg>
+
+      <div style="display:flex; gap:12px; width:100%; max-width:860px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
+        <div class="badge" style="color:var(--accent5);">similarity_top_k = 2</div>
+        <div class="badge" style="color:var(--accent2);">response_mode = compact</div>
+        <div class="badge" style="color:var(--accent);">streaming = true (web)</div>
+        <div class="badge" style="color:var(--accent4);">fontes rankeadas por score</div>
+        <div class="badge" style="color:var(--accent3);">elapsed_ms salvo no PG</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 15 — LINKS E FONTES
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="LINKS">
+    <div class="slide-inner">
+      <h2>Links e <span class="highlight">Referências</span></h2>
+
+      <div class="grid-3" style="margin-bottom:24px;">
+        <a class="link-card" href="https://ollama.com" target="_blank" style="flex-direction:column; text-align:center; gap:8px; text-decoration:none;">
+          <span style="font-size:2.5rem;">🦙</span>
+          <span style="color:var(--accent2); font-weight:600;">Ollama</span>
+          <span style="color:var(--muted); font-size:0.8rem;">LLM local · Metal GPU<br>ollama.com</span>
+        </a>
+        <a class="link-card" href="https://console.groq.com" target="_blank" style="flex-direction:column; text-align:center; gap:8px; text-decoration:none;">
+          <span style="font-size:2.5rem;">⚡</span>
+          <span style="color:var(--groq); font-weight:600;">Groq Console</span>
+          <span style="color:var(--muted); font-size:0.8rem;">LPU · inferência rápida<br>console.groq.com</span>
+        </a>
+        <a class="link-card" href="https://pt.casino.guru/jogos-de-casino-gratis/slots/jogar-slot-gates-of-olympus-gratuitamente" target="_blank" style="flex-direction:column; text-align:center; gap:8px; text-decoration:none;">
+          <span style="font-size:2.5rem;">🎰</span>
+          <span style="color:var(--accent5); font-weight:600;">Gates of Olympus</span>
+          <span style="color:var(--muted); font-size:0.8rem;">Jogo grátis<br>casino.guru</span>
+        </a>
+      </div>
+
+      <div class="grid-3">
+        <a class="link-card" href="https://qdrant.tech" target="_blank" style="gap:10px; text-decoration:none;">
+          <span>🔍</span><span style="color:var(--accent5);">Qdrant</span>
+        </a>
+        <a class="link-card" href="https://www.llamaindex.ai" target="_blank" style="gap:10px; text-decoration:none;">
+          <span>📚</span><span style="color:var(--accent4);">LlamaIndex</span>
+        </a>
+        <a class="link-card" href="https://docs.anthropic.com/pt/docs/claude-code" target="_blank" style="gap:10px; text-decoration:none;">
+          <span>🤖</span><span style="color:var(--accent);">Claude Code</span>
+        </a>
+        <a class="link-card" href="https://hub.docker.com/r/qdrant/qdrant" target="_blank" style="gap:10px; text-decoration:none;">
+          <span>🐳</span><span style="color:var(--docker);">Qdrant Docker</span>
+        </a>
+        <a class="link-card" href="https://hub.docker.com/_/postgres" target="_blank" style="gap:10px; text-decoration:none;">
+          <span>🐘</span><span style="color:var(--accent2);">Postgres Docker</span>
+        </a>
+        <a class="link-card" href="https://groq.com/pricing" target="_blank" style="gap:10px; text-decoration:none;">
+          <span>💰</span><span style="color:var(--groq);">Groq Pricing</span>
+        </a>
+      </div>
+
+      <div style="margin-top:28px; padding:16px 24px; background:var(--surface); border-radius:10px; border:1px solid var(--border); text-align:center; max-width:680px;">
+        <p style="color:var(--muted); font-size:0.85rem;">
+          Stack: <strong style="color:var(--text);">LlamaIndex 0.11</strong> · <strong style="color:var(--text);">Qdrant</strong> · <strong style="color:var(--text);">PostgreSQL 16</strong> · <strong style="color:var(--text);">FastAPI</strong> · <strong style="color:var(--text);">Docker Compose</strong><br>
+          Gerado com Claude Code · Sonnet 4.6 · 2025
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 16 — CRÉDITOS
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="CRÉDITOS">
+    <div class="hero-glow" style="background:#d2a8ff; top:-80px; right:-80px;"></div>
+    <div class="hero-glow" style="background:#58a6ff; bottom:-80px; left:-80px;"></div>
+
+    <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Feito com 🤖 + ☕</span>
+
+    <h2 style="margin-top:20px; margin-bottom:40px; text-align:center;">
+      Quem fez este <span class="highlight">projeto</span>
+    </h2>
+
+    <div style="display:flex; gap:40px; align-items:stretch; justify-content:center; flex-wrap:wrap;">
+
+      <!-- Cleyton -->
+      <div class="card card-accent-blue" style="width:280px; text-align:center; padding:36px 28px;">
+        <div style="width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg,#1f4288,#2d6be4); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:2rem;">
+          👤
+        </div>
+        <h3 style="font-size:1.2rem; color:var(--text); margin-bottom:6px;">Cleyton Pedroza</h3>
+        <p style="font-size:0.82rem; color:var(--accent); margin-bottom:14px; font-weight:600; letter-spacing:1px; text-transform:uppercase;">Desenvolvedor</p>
+        <p style="font-size:0.85rem; color:var(--muted); line-height:1.6;">
+          Arquitetura do sistema, integração Docker, pipeline RAG, interface web e visão do produto.
+        </p>
+        <div style="margin-top:20px; display:flex; flex-direction:column; gap:8px; align-items:center;">
+          <a href="https://github.com/cletrix/reals_rag_game-provider" target="_blank"
+             style="font-size:0.8rem; display:flex; align-items:center; gap:6px; color:var(--muted);">
+            🐙 github.com/cletrix
+          </a>
+          <span style="font-size:0.8rem; color:var(--muted);">📧 cleytonpedroza@gmail.com</span>
+        </div>
+      </div>
+
+      <!-- divider -->
+      <div style="display:flex; align-items:center;">
+        <div style="width:1px; height:180px; background:var(--border);"></div>
+        <span style="position:absolute; background:var(--bg); padding:8px; font-size:1.1rem; color:var(--muted);">✕</span>
+      </div>
+
+      <!-- Claude -->
+      <div class="card card-accent-purple" style="width:280px; text-align:center; padding:36px 28px;">
+        <div style="width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg,#3a1a6e,#7c3aed); display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:2rem;">
+          🤖
+        </div>
+        <h3 style="font-size:1.2rem; color:var(--text); margin-bottom:6px;">Claude Sonnet 4.6</h3>
+        <p style="font-size:0.82rem; color:var(--accent4); margin-bottom:14px; font-weight:600; letter-spacing:1px; text-transform:uppercase;">AI Pair Programmer</p>
+        <p style="font-size:0.85rem; color:var(--muted); line-height:1.6;">
+          Implementação de código, debug, documentação, esta apresentação e sugestões de arquitetura ao longo do projeto.
+        </p>
+        <div style="margin-top:20px; display:flex; flex-direction:column; gap:8px; align-items:center;">
+          <a href="https://claude.ai/code" target="_blank"
+             style="font-size:0.8rem; display:flex; align-items:center; gap:6px; color:var(--muted);">
+            🔗 claude.ai/code
+          </a>
+          <span style="font-size:0.8rem; color:var(--muted);">🏢 Anthropic · 2025</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:40px; padding:14px 28px; background:var(--surface); border:1px solid var(--border); border-radius:10px; text-align:center; max-width:560px;">
+      <p style="font-size:0.82rem; color:var(--muted);">
+        Projeto open source · Stack: Python · FastAPI · LlamaIndex · Qdrant · PostgreSQL · Docker
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 17 — TRANSIÇÃO MELHORIAS
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="MELHORIAS">
+    <div class="slide-inner">
+      <div class="hero-glow" style="background:#3fb950; top:-100px; left:-100px;"></div>
+
+      <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Branch training_lb</span>
+
+      <h2 style="text-align:center; margin-top:24px; margin-bottom:32px;">
+        Melhorias <span class="hl-green">Enterprise</span>
+      </h2>
+
+      <p style="text-align:center; color:var(--muted); font-size:1.1rem; max-width:640px; line-height:1.8;">
+        A partir deste slide, apresentamos as funcionalidades enterprise implementadas na branch <code style="color:var(--accent);">training_lb</code>.
+      </p>
+
+      <div style="display:flex; gap:24px; justify-content:center; margin-top:40px; flex-wrap:wrap;">
+        <div class="card card-accent-green" style="min-width:200px; text-align:center; padding:20px;">
+          <div style="font-size:2.5rem; margin-bottom:8px;">✅</div>
+          <h3 style="font-size:0.9rem;">9 Funcionalidades</h3>
+          <p style="font-size:0.8rem; color:var(--muted); margin-top:8px;">Implementadas</p>
+        </div>
+        <div class="card card-accent-blue" style="min-width:200px; text-align:center; padding:20px;">
+          <div style="font-size:2.5rem; margin-bottom:8px;">📊</div>
+          <h3 style="font-size:0.9rem;">5 de 10</h3>
+          <p style="font-size:0.8rem; color:var(--muted); margin-top:8px;">Falhas críticas resolvidas</p>
+        </div>
+        <div class="card card-accent-purple" style="min-width:200px; text-align:center; padding:20px;">
+          <div style="font-size:2.5rem; margin-bottom:8px;">🎯</div>
+          <h3 style="font-size:0.9rem;">Parcialmente</h3>
+          <p style="font-size:0.8rem; color:var(--muted); margin-top:8px;">Enterprise-ready</p>
+        </div>
+      </div>
+
+      <div style="margin-top:48px; padding:16px 24px; background:var(--surface); border:1px solid var(--border); border-radius:10px; text-align:center; max-width:640px;">
+        <p style="color:var(--muted); font-size:0.85rem;">
+          <strong style="color:var(--text);">Documentação:</strong> <a href="docs/TODO.md" target="_blank" style="color:var(--accent);">docs/TODO.md</a> · <a href="docs/analise-mudancas-training_lb.md" target="_blank" style="color:var(--accent);">analise-mudancas-training_lb.md</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 18 — SISTEMA DE CONVERSAS
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="CONVERSAS">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Branch training_lb</span>
+        <h2>Sistema de <span class="hl-green">Conversas</span></h2>
+        <p style="color:var(--muted); font-size:0.9rem;">Agrupamento de mensagens com contexto e histórico</p>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:24px;">
+        <div class="card card-accent-green">
+          <h3>🗄️ Banco de Dados</h3>
+          <table style="font-size:0.8rem; margin-top:8px;">
+            <thead>
+              <tr><th>Tabela</th><th>Coluna</th><th>Tipo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>conversations</td><td>id</td><td>UUID PK</td></tr>
+              <tr><td>conversations</td><td>title</td><td>VARCHAR</td></tr>
+              <tr><td>conversations</td><td>created_at</td><td>TIMESTAMPTZ</td></tr>
+              <tr><td>queries</td><td>conversation_id</td><td>UUID FK</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>🌐 Interface Web</h3>
+          <p style="font-size:0.85rem; margin-bottom:12px;">
+            <strong style="color:var(--text);">Sidebar de conversas:</strong><br>
+            • Lista todas as conversas<br>
+            • Contagem de mensagens<br>
+            • Preview da última mensagem<br>
+            • Títulos automáticos (primeira pergunta)
+          </p>
+          <p style="font-size:0.85rem;">
+            <strong style="color:var(--text);">Contexto mantido:</strong><br>
+            • Todas as mensagens carregadas<br>
+            • LLM vê histórico completo<br>
+            • UX similar ChatGPT
+          </p>
+        </div>
+      </div>
+
+      <pre style="margin-bottom:20px; max-width:960px;">
+<span class="comment-line"># web/db.py — funções CRUD para conversas</span>
+<span class="token-k">async def</span> <span class="token-n">create_conversation</span>(title: <span class="token-k">str</span>) -> <span class="token-k">str</span>:
+    <span class="token-k">return</span> <span class="token-k">await</span> pool.fetchval(
+        <span class="token-s">"INSERT INTO conversations (title) VALUES ($1) RETURNING id"</span>,
+        title
+    )
+
+<span class="token-k">async def</span> <span class="token-n">get_conversation_messages</span>(conv_id: <span class="token-k">str</span>) -> <span class="token-k">list</span>:
+    <span class="token-k">return</span> <span class="token-k">await</span> pool.fetch(
+        <span class="token-s">"SELECT * FROM queries WHERE conversation_id = $1 ORDER BY created_at"</span>,
+        conv_id
+    )</pre>
+
+      <div class="grid-3" style="max-width:960px;">
+        <div class="badge" style="color:var(--accent2);">GET /api/conversations</div>
+        <div class="badge" style="color:var(--accent2);">POST /api/conversations</div>
+        <div class="badge" style="color:var(--accent2);">GET /api/conversations/{id}/messages</div>
+        <div class="badge" style="color:var(--accent2);">PATCH /api/conversations/{id}</div>
+        <div class="badge" style="color:var(--accent2);">conversation_id no chat/stream</div>
+        <div class="badge" style="color:var(--accent2);">Contexto LlamaIndex ChatMemory</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 19 — DOCUMENTAÇÃO DE API
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="API DOCS">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Branch training_lb</span>
+        <h2>Documentação de <span class="hl-blue">API</span></h2>
+        <p style="color:var(--muted); font-size:0.9rem;">FastAPI com OpenAPI/Swagger e Pydantic schemas</p>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:24px;">
+        <div>
+          <h3 style="color:var(--accent); margin-bottom:12px;">📚 web/schemas.py</h3>
+          <div class="card" style="margin-bottom:12px;">
+            <p style="font-size:0.82rem; color:var(--muted);">Pydantic models para validação:</p>
+            <pre style="margin-top:8px; font-size:0.75rem; padding:10px;">
+<span class="token-k">class</span> <span class="token-n">ChatRequest</span>(<span class="token-n">BaseModel</span>):
+    question: <span class="token-k">str</span> = <span class="token-n">Field</span>(..., min_length=<span class="token-num">1</span>, max_length=<span class="token-num">10000</span>)
+    conversation_id: <span class="token-k">Optional</span>[<span class="token-n">UUID</span>] = <span class="token-k">None</span>
+
+<span class="token-k">class</span> <span class="token-n">HealthResponse</span>(<span class="token-n">BaseModel</span>):
+    status: <span class="token-k">str</span>
+    timestamp: <span class="token-k">str</span>
+    services: <span class="token-k">dict</span></pre>
+          </div>
+          <div class="card card-accent-blue">
+            <h3>Endpoints documentados</h3>
+            <table style="font-size:0.75rem; margin-top:8px;">
+              <tr><td>GET /api/history</td><td>ResponseModel=List[QueryResponse]</td></tr>
+              <tr><td>GET /api/conversations</td><td>ResponseModel=List[ConversationResponse]</td></tr>
+              <tr><td>POST /chat/stream</td><td>RequestModel=ChatRequest</td></tr>
+              <tr><td>GET /health</td><td>ResponseModel=HealthResponse</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div>
+          <h3 style="color:var(--accent4); margin-bottom:12px;">🌐 Acesso à API</h3>
+          <div class="card card-accent-green" style="margin-bottom:12px;">
+            <h3>Swagger UI</h3>
+            <p style="font-size:0.82rem;">http://localhost:2468/docs</p>
+            <p style="font-size:0.8rem; color:var(--muted);">Interface interativa para testar endpoints</p>
+          </div>
+          <div class="card card-accent-purple" style="margin-bottom:12px;">
+            <h3>ReDoc</h3>
+            <p style="font-size:0.82rem;">http://localhost:2468/redoc</p>
+            <p style="font-size:0.8rem; color:var(--muted);">Documentação alternativa mais limpa</p>
+          </div>
+          <div class="card card-accent-orange">
+            <h3>OpenAPI JSON</h3>
+            <p style="font-size:0.82rem;">http://localhost:2468/openapi.json</p>
+            <p style="font-size:0.8rem; color:var(--muted);">Spec para geração de clientes</p>
+          </div>
+        </div>
+      </div>
+
+      <pre style="max-width:960px;">
+<span class="comment-line"># web/main.py — endpoint com documentação</span>
+<span class="token-o">@app.get</span>(<span class="token-s">"/api/history"</span>, response_model=<span class="token-n">List</span>[<span class="token-n">QueryResponse</span>], tags=[<span class="token-s">"History"</span>])
+<span class="token-k">async def</span> <span class="token-n">api_history</span>():
+    <span class="token-s">"""Retorna histórico de queries com preview da resposta."""</span>
+    <span class="token-k">return</span> <span class="token-k">await</span> get_history()
+
+<span class="comment-line"># docs/api-documentation.md — documentação completa</span>
+<span class="comment-line"># 650 linhas com exemplos de requests/responses</span></pre>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 20 — HEALTH CHECKS
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="HEALTH">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Branch training_lb</span>
+        <h2>Health <span class="hl-purple">Checks</span></h2>
+        <p style="color:var(--muted); font-size:0.9rem;">Endpoints para monitoramento e orquestração</p>
+      </div>
+
+      <svg class="diagram" viewBox="0 0 860 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- /health -->
+        <rect x="10" y="80" width="200" height="100" rx="10" fill="#161b22" stroke="#56d364" stroke-width="1.5"/>
+        <text x="110" y="110" fill="#56d364" font-size="12" font-weight="700" text-anchor="middle">GET /health</text>
+        <text x="110" y="130" fill="#8b949e" font-size="10" text-anchor="middle">Verifica todas as dependências</text>
+        <text x="110" y="150" fill="#8b949e" font-size="10" text-anchor="middle">PostgreSQL · Qdrant · Ollama</text>
+        <text x="110" y="170" fill="#56d364" font-size="9" text-anchor="middle">200 (healthy) / 207 (degraded)</text>
+
+        <!-- /readiness -->
+        <rect x="230" y="80" width="200" height="100" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+        <text x="330" y="110" fill="#58a6ff" font-size="12" font-weight="700" text-anchor="middle">GET /readiness</text>
+        <text x="330" y="130" fill="#8b949e" font-size="10" text-anchor="middle">Pronto para tráfego?</text>
+        <text x="330" y="150" fill="#8b949e" font-size="10" text-anchor="middle">Verifica PostgreSQL</text>
+        <text x="330" y="170" fill="#58a6ff" font-size="9" text-anchor="middle">200 (ready) / 503 (not ready)</text>
+
+        <!-- /liveness -->
+        <rect x="450" y="80" width="200" height="100" rx="10" fill="#161b22" stroke="#d2a8ff" stroke-width="1.5"/>
+        <text x="550" y="110" fill="#d2a8ff" font-size="12" font-weight="700" text-anchor="middle">GET /liveness</text>
+        <text x="550" y="130" fill="#8b949e" font-size="10" text-anchor="middle">Processo vivo?</text>
+        <text x="550" y="150" fill="#8b949e" font-size="10" text-anchor="middle">Retorna sempre 200</text>
+        <text x="550" y="170" fill="#d2a8ff" font-size="9" text-anchor="middle">200 (alive)</text>
+
+        <!-- docker-compose healthcheck -->
+        <rect x="670" y="80" width="180" height="100" rx="10" fill="#161b22" stroke="#0db7ed" stroke-width="1.5"/>
+        <text x="760" y="110" fill="#0db7ed" font-size="11" font-weight="700" text-anchor="middle">Docker Healthcheck</text>
+        <text x="760" y="130" fill="#8b949e" font-size="9" text-anchor="middle">curl /liveness</text>
+        <text x="760" y="148" fill="#8b949e" font-size="9" text-anchor="middle">interval: 15s</text>
+        <text x="760" y="166" fill="#8b949e" font-size="9" text-anchor="middle">retries: 3</text>
+
+        <!-- arrows -->
+        <line x1="210" y1="130" x2="230" y2="130" stroke="#484f58" stroke-width="1.5" marker-end="url(#a4)"/>
+        <line x1="430" y1="130" x2="450" y2="130" stroke="#484f58" stroke-width="1.5" marker-end="url(#a4)"/>
+        <line x1="650" y1="130" x2="670" y2="130" stroke="#484f58" stroke-width="1.5" marker-end="url(#a4)"/>
+
+        <!-- Kubernetes/Docker -->
+        <text x="430" y="220" fill="#6e7681" font-size="10" text-anchor="middle">Kubernetes/Docker orquestradores usam /readiness e /liveness</text>
+        <text x="430" y="240" fill="#6e7681" font-size="10" text-anchor="middle">/health é para monitoramento manual e dashboards</text>
+
+        <defs>
+          <marker id="a4" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L6,3 z" fill="#484f58"/>
+          </marker>
+        </defs>
+      </svg>
+
+      <div class="grid-3" style="margin-top:20px;">
+        <div class="card card-accent-green">
+          <h3>Response /health</h3>
+          <pre style="font-size:0.7rem; padding:8px;">{
+  "status": "healthy",
+  "timestamp": "2026-05-21T...",
+  "services": {
+    "postgres": "healthy",
+    "qdrant": "healthy",
+    "ollama": "healthy"
+  }
+}</pre>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>Response /readiness</h3>
+          <pre style="font-size:0.7rem; padding:8px;">{
+  "status": "ready"
+}</pre>
+        </div>
+        <div class="card card-accent-purple">
+          <h3>Response /liveness</h3>
+          <pre style="font-size:0.7rem; padding:8px;">{
+  "status": "alive",
+  "timestamp": "2026-05-21T..."
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 21 — RATE LIMITING
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="RATE LIMIT">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Branch training_lb</span>
+        <h2>Rate <span class="hl-orange">Limiting</span></h2>
+        <p style="color:var(--muted); font-size:0.9rem;">Proteção contra abuso por IP</p>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:24px;">
+        <div class="card card-accent-orange">
+          <h3>🛡️ Como funciona</h3>
+          <ul style="font-size:0.85rem; color:var(--muted); line-height:1.8; margin-top:12px; margin-left:20px;">
+            <li>In-memory por IP (defaultdict)</li>
+            <li>Janela de tempo configurável</li>
+            <li>30 requests por 60 segundos (padrão)</li>
+            <li>Aplicado em /api e /chat</li>
+            <li>HTTP 429 quando excedido</li>
+          </ul>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>⚙️ Configuração</h3>
+          <pre style="margin-top:12px; font-size:0.78rem;">
+<span class="comment-line"># docker-compose.yml</span>
+<span class="token-o">environment:</span>
+  <span class="token-o">RATE_LIMIT_REQUESTS</span>: <span class="token-s">"30"</span>
+  <span class="token-o">RATE_LIMIT_WINDOW</span>: <span class="token-s">"60"</span>
+
+<span class="comment-line"># .env</span>
+<span class="token-o">RATE_LIMIT_REQUESTS</span>=<span class="token-s">50</span>
+<span class="token-o">RATE_LIMIT_WINDOW</span>=<span class="token-s">120</span></pre>
+        </div>
+      </div>
+
+      <pre style="margin-bottom:20px; max-width:960px;">
+<span class="comment-line"># web/main.py — middleware de rate limiting</span>
+<span class="token-n">_rate_counters</span>: <span class="token-k">dict</span>[<span class="token-k">str</span>, <span class="token-k">list</span>[<span class="token-k">float</span>]] = <span class="token-n">defaultdict</span>(<span class="token-k">list</span>)
+
+<span class="token-k">def</span> <span class="token-n">_check_rate_limit</span>(ip: <span class="token-k">str</span>) -> <span class="token-k">bool</span>:
+    now = time.time()
+    window_start = now - RATE_LIMIT_WINDOW
+    hits = _rate_counters[ip]
+    _rate_counters[ip] = [t <span class="token-k">for</span> t <span class="token-k">in</span> hits <span class="token-k">if</span> t > window_start]
+    <span class="token-k">if</span> len(_rate_counters[ip]) >= RATE_LIMIT_REQUESTS:
+        <span class="token-k">return</span> <span class="token-k">False</span>
+    _rate_counters[ip].append(now)
+    <span class="token-k">return</span> <span class="token-k">True</span>
+
+<span class="token-o">@app.middleware</span>(<span class="token-s">"http"</span>)
+<span class="token-k">async def</span> <span class="token-n">rate_limit_middleware</span>(request, call_next):
+    <span class="token-k">if</span> path.startswith(<span class="token-s">"/api"</span>) <span class="token-k">or</span> path.startswith(<span class="token-s">"/chat"</span>):
+        ip = request.client.host
+        <span class="token-k">if not</span> _check_rate_limit(ip):
+            <span class="token-k">return</span> JSONResponse(status_code=<span class="token-num">429</span>, content={<span class="token-s">"error"</span>: <span class="token-s">"Too Many Requests"</span>})
+    <span class="token-k">return await</span> call_next(request)</pre>
+
+      <div style="display:flex; gap:12px; width:100%; max-width:960px; flex-wrap:wrap; justify-content:center;">
+        <div class="badge" style="color:var(--accent5);">429 Too Many Requests</div>
+        <div class="badge" style="color:var(--accent2);">In-memory (não persistente)</div>
+        <div class="badge" style="color:var(--accent);">Middleware HTTP</div>
+        <div class="badge" style="color:var(--accent4);">Logging de violações</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 22 — LOGGING ESTRUTURADO
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="LOGGING">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Branch training_lb</span>
+        <h2>Logging <span class="hl-blue">Estruturado</span></h2>
+        <p style="color:var(--muted); font-size:0.9rem;">Logs JSON com structlog e Request ID</p>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:24px;">
+        <div class="card card-accent-blue">
+          <h3>📋 web/logger.py</h3>
+          <pre style="margin-top:12px; font-size:0.75rem;">
+<span class="token-k">import</span> structlog
+
+<span class="token-n">log</span> = structlog.get_logger()
+<span class="token-n">log</span> = log.bind(service=<span class="token-s">"rag-web"</span>)
+
+<span class="comment-line"># Logs em formato JSON</span>
+<span class="token-n">log</span>.info(<span class="token-s">"query_processed"</span>,
+    query_id=query_id,
+    duration_ms=elapsed_ms)</pre>
+        </div>
+        <div class="card card-accent-purple">
+          <h3>🔍 Request ID</h3>
+          <p style="font-size:0.85rem; margin-bottom:12px;">
+            <strong style="color:var(--text);">Middleware de logging:</strong><br>
+            • Gera UUID para cada request<br>
+            • Adiciona header X-Request-ID<br>
+            • Loga método, path, status, duration<br>
+            • Facilita rastreabilidade
+          </p>
+          <p style="font-size:0.85rem;">
+            <strong style="color:var(--text);">Extra no log:</strong><br>
+            • request_id<br>
+            • user_ip<br>
+            • method<br>
+            • path<br>
+            • status_code<br>
+            • duration_ms
+          </p>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:20px; max-width:960px;">
+        <h3>Exemplo de Log JSON</h3>
+        <pre style="font-size:0.72rem; padding:12px;">{
+  "event": "query_processed",
+  "level": "info",
+  "service": "rag-web",
+  "request_id": "a1b2c3d4",
+  "method": "POST",
+  "path": "/chat/stream",
+  "status_code": 200,
+  "duration_ms": 1500,
+  "user_ip": "192.168.1.100",
+  "query_id": "550e8400-e29b-41d4-a716-446655440000",
+  "conversation_id": "550e8400-e29b-41d4-a716-446655440001",
+  "timestamp": "2026-05-21T19:30:00.000Z"
+}</pre>
+      </div>
+
+      <div class="grid-3" style="max-width:960px;">
+        <div class="badge" style="color:var(--accent);">structlog</div>
+        <div class="badge" style="color:var(--accent4);">JSON format</div>
+        <div class="badge" style="color:var(--accent2);">Request ID header</div>
+        <div class="badge" style="color:var(--accent5);">Middleware HTTP</div>
+        <div class="badge" style="color:var(--accent);">Error logging</div>
+        <div class="badge" style="color:var(--accent4);">Loki/ELK ready</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 23 — ERROR HANDLERS
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="ERROR HANDLERS">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Branch training_lb</span>
+        <h2>Error <span class="hl-red">Handlers</span></h2>
+        <p style="color:var(--muted); font-size:0.9rem;">Tratamento consistente de erros globais</p>
+      </div>
+
+      <div class="grid-3" style="margin-bottom:24px;">
+        <div class="card card-accent-red">
+          <h3>HTTP Exception</h3>
+          <p style="font-size:0.82rem;">Tratamento de erros HTTP (404, 500, etc.) com logging estruturado e resposta padronizada.</p>
+        </div>
+        <div class="card card-accent-orange">
+          <h3>Validation Error</h3>
+          <p style="font-size:0.82rem;">Erros de validação Pydantic com detalhes dos campos inválidos e logging de warnings.</p>
+        </div>
+        <div class="card card-accent-purple">
+          <h3>Generic Exception</h3>
+          <p style="font-size:0.82rem;">Captura exceções não tratadas, loga com stack trace e retorna 500 genérico.</p>
+        </div>
+      </div>
+
+      <pre style="margin-bottom:20px; max-width:960px;">
+<span class="comment-line"># web/main.py — error handlers globais</span>
+<span class="token-o">@app.exception_handler</span>(<span class="token-n">StarletteHTTPException</span>)
+<span class="token-k">async def</span> <span class="token-n">http_exception_handler</span>(request, exc):
+    log.warning(<span class="token-s">"HTTP %s: %s"</span>, exc.status_code, exc.detail,
+        extra={<span class="token-s">"path"</span>: request.url.path, <span class="token-s">"status_code"</span>: exc.status_code})
+    <span class="token-k">return</span> JSONResponse(status_code=exc.status_code,
+        content={<span class="token-s">"error"</span>: <span class="token-s">"HTTPException"</span>, <span class="token-s">"message"</span>: <span class="token-k">str</span>(exc.detail)})
+
+<span class="token-o">@app.exception_handler</span>(<span class="token-n">RequestValidationError</span>)
+<span class="token-k">async def</span> <span class="token-n">validation_exception_handler</span>(request, exc):
+    errors = exc.errors()
+    log.warning(<span class="token-s">"Validation error: %s"</span>, errors,
+        extra={<span class="token-s">"path"</span>: request.url.path, <span class="token-s">"status_code"</span>: <span class="token-num">422</span>})
+    <span class="token-k">return</span> JSONResponse(status_code=<span class="token-num">422</span>,
+        content={<span class="token-s">"error"</span>: <span class="token-s">"ValidationError"</span>, <span class="token-s">"message"</span>: <span class="token-s">"Dados inválidos"</span>, <span class="token-s">"detail"</span>: errors})
+
+<span class="token-o">@app.exception_handler</span>(<span class="token-n">Exception</span>)
+<span class="token-k">async def</span> <span class="token-n">generic_exception_handler</span>(request, exc):
+    log.exception(<span class="token-s">"Erro não tratado: %s"</span>, <span class="token-k">str</span>(exc),
+        extra={<span class="token-s">"path"</span>: request.url.path, <span class="token-s">"status_code"</span>: <span class="token-num">500</span>})
+    <span class="token-k">return</span> JSONResponse(status_code=<span class="token-num">500</span>,
+        content={<span class="token-s">"error"</span>: <span class="token-s">"InternalServerError"</span>, <span class="token-s">"message"</span>: <span class="token-s">"Erro interno"</span>})</pre>
+
+      <div class="grid-2" style="max-width:720px;">
+        <div class="card card-accent-green">
+          <h3>Response 422</h3>
+          <pre style="font-size:0.7rem; padding:8px;">{
+  "error": "ValidationError",
+  "message": "Dados inválidos",
+  "detail": [
+    {"loc": ["body", "question"],
+     "msg": "field required",
+     "type": "value_error.missing"}
+  ]
+}</pre>
+        </div>
+        <div class="card card-accent-orange">
+          <h3>Response 500</h3>
+          <pre style="font-size:0.7rem; padding:8px;">{
+  "error": "InternalServerError",
+  "message": "Erro interno do servidor"
+}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 24 — GRAFANA
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="GRAFANA">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Branch training_lb</span>
+        <h2><span class="hl-orange">Grafana</span> Dashboard</h2>
+        <p style="color:var(--muted); font-size:0.9rem;">Monitoramento visual com dashboards automatizados</p>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:24px;">
+        <div class="card card-accent-orange">
+          <h3>📊 Configuração</h3>
+          <ul style="font-size:0.85rem; color:var(--muted); line-height:1.8; margin-top:12px; margin-left:20px;">
+            <li>Container grafana/grafana:10.4.2</li>
+            <li>Porta 3001 → 3000</li>
+            <li>Credenciais: admin/admin</li>
+            <li>Datasource PostgreSQL automático</li>
+            <li>Provisioning via YAML</li>
+            <li>Volume persistido grafana_data</li>
+          </ul>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>📈 Dashboards</h3>
+          <ul style="font-size:0.85rem; color:var(--muted); line-height:1.8; margin-top:12px; margin-left:20px;">
+            <li>Conversas por dia</li>
+            <li>Queries por usuário</li>
+            <li>Tokens consumidos</li>
+            <li>Tempo médio de resposta</li>
+            <li>LLM provider usage</li>
+            <li>Documents indexed</li>
+          </ul>
+        </div>
+      </div>
+
+      <pre style="margin-bottom:20px; max-width:960px;">
+<span class="comment-line"># docker-compose.yml — Grafana</span>
+<span class="token-n">grafana</span>:
+  <span class="token-n">image</span>: grafana/grafana:<span class="token-num">10.4</span>.<span class="token-num">2</span>
+  <span class="token-n">ports</span>:
+    <span class="token-k">-</span> <span class="token-s">"3001:3000"</span>
+  <span class="token-n">environment</span>:
+    <span class="token-k">-</span> GF_SECURITY_ADMIN_USER=<span class="token-n">admin</span>
+    <span class="token-k">-</span> GF_SECURITY_ADMIN_PASSWORD=<span class="token-n">${GRAFANA_PASSWORD:-admin}</span>
+  <span class="token-n">volumes</span>:
+    <span class="token-k">-</span> grafana_data:/var/lib/grafana
+    <span class="token-k">-</span> ./grafana/provisioning:/etc/grafana/provisioning:<span class="token-n">ro</span></pre>
+
+      <div style="margin-top:24px; padding:16px 24px; background:var(--surface); border:1px solid var(--border); border-radius:10px; text-align:center; max-width:720px;">
+        <p style="color:var(--muted); font-size:0.85rem;">
+          <strong style="color:var(--text);">Acesso:</strong> <a href="http://localhost:3001" target="_blank" style="color:var(--accent);">http://localhost:3001</a> (admin/admin)<br>
+          <strong style="color:var(--text);">Provisioning:</strong> <code>grafana/provisioning/datasources/</code> e <code>dashboards/</code>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 25 — DEPLOY AUTOMATIZADO
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="DEPLOY">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">Branch training_lb</span>
+        <h2>Deploy <span class="hl-green">Automatizado</span></h2>
+        <p style="color:var(--muted); font-size:0.9rem;">Script deploy.sh e migrações automáticas</p>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:24px;">
+        <div class="card card-accent-green">
+          <h3>🚀 deploy.sh</h3>
+          <ul style="font-size:0.85rem; color:var(--muted); line-height:1.8; margin-top:12px; margin-left:20px;">
+            <li>Verifica Docker e Ollama</li>
+            <li>Puxa modelos Ollama automaticamente</li>
+            <li>Cria .env se não existir</li>
+            <li>Roda docker-compose up</li>
+            <li>Executa migrações PostgreSQL</li>
+            <li>Verifica health checks</li>
+          </ul>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>🔄 Migrações Automáticas</h3>
+          <ul style="font-size:0.85rem; color:var(--muted); line-height:1.8; margin-top:12px; margin-left:20px;">
+            <li>db/init.sql executado automaticamente</li>
+            <li>Tabelas criadas se não existirem</li>
+            <li>Índices criados automaticamente</li>
+            <li>depends_on com healthcheck</li>
+            <li>Volume postgres_data persistido</li>
+          </ul>
+        </div>
+      </div>
+
+      <pre style="margin-bottom:20px; max-width:960px;">
+<span class="comment-line"># deploy.sh — exemplo</span>
+<span class="prompt">$</span> <span class="cmd">./deploy.sh</span>
+<span class="token-s">✓</span> Verificando Docker... OK
+<span class="token-s">✓</span> Verificando Ollama... OK
+<span class="token-s">✓</span> Puxando modelo bge-m3... OK
+<span class="token-s">✓</span> Criando .env... OK
+<span class="token-s">✓</span> Subindo containers... OK
+<span class="token-s">✓</span> Executando migrações... OK
+<span class="token-s">✓</span> Verificando health checks... OK
+<span class="token-s">✓</span> Deploy concluído!
+<span class="prompt">$</span> <span class="cmd">open</span> <span class="arg">http://localhost:2468</span></pre>
+
+      <div class="grid-3" style="max-width:960px;">
+        <div class="badge" style="color:var(--accent2);">make deploy-full</div>
+        <div class="badge" style="color:var(--accent);">docker-compose up -d</div>
+        <div class="badge" style="color:var(--accent4);">healthcheck: pg_isready</div>
+        <div class="badge" style="color:var(--accent5);">volume postgres_data</div>
+        <div class="badge" style="color:var(--accent2);">depends_on condition</div>
+        <div class="badge" style="color:var(--accent);">restart: unless-stopped</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 26 — PLANO FUTURO
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="FUTURO">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">TODO.md</span>
+        <h2>Plano <span class="hl-orange">Futuro</span></h2>
+        <p style="color:var(--muted); font-size:0.9rem;">Melhorias pendentes para Enterprise-ready</p>
+      </div>
+
+      <div class="grid-2" style="max-width:960px;">
+        <div>
+          <h3 style="color:var(--accent3); margin-bottom:16px;">⚠️ Melhorias Pendentes</h3>
+          <ul class="step-list" style="max-width:480px;">
+            <li>
+              <div class="step-num" style="background:var(--accent3);">1</div>
+              <div class="step-body">
+                <strong>Testes Automatizados</strong>
+                <span>Pytest com testes unitários, integração e E2E. Coverage mínimo 80%. Playwright para E2E.</span>
+              </div>
+            </li>
+            <li>
+              <div class="step-num" style="background:var(--accent3);">2</div>
+              <div class="step-body">
+                <strong>CI/CD</strong>
+                <span>GitHub Actions para pipeline test → build → deploy automático. Deploy automático para staging/produção.</span>
+              </div>
+            </li>
+            <li>
+              <div class="step-num" style="background:var(--accent3);">3</div>
+              <div class="step-body">
+                <strong>Autenticação e Autorização</strong>
+                <span>OAuth2/LDAP, JWT tokens, RBAC por departamento. Middleware de autenticação.</span>
+              </div>
+            </li>
+            <li>
+              <div class="step-num" style="background:var(--accent3);">4</div>
+              <div class="step-body">
+                <strong>Configuração por Ambiente</strong>
+                <span>.env.dev, .env.staging, .env.prod. docker-compose.override.yml para dev. Documentar configurações.</span>
+              </div>
+            </li>
+            <li>
+              <div class="step-num" style="background:var(--accent3);">5</div>
+              <div class="step-body">
+                <strong>Backup Automatizado</strong>
+                <span>Scripts de backup/restore PostgreSQL e Qdrant. Cron job. Testes de restore regulares. Retenção de backups.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 style="color:var(--accent2); margin-bottom:16px;">📊 Status Atual</h3>
+          <div class="card card-accent-green" style="margin-bottom:16px;">
+            <h3 style="color:var(--accent2);">5 de 10 falhas críticas resolvidas</h3>
+            <p style="font-size:0.85rem; color:var(--muted);">✅ Validação de input (Pydantic)<br>✅ Logging estruturado (structlog)<br>✅ Health checks (/health, /readiness, /liveness)<br>✅ Documentação de API (Swagger, ReDoc)<br>✅ Error handlers globais</p>
+          </div>
+          <div class="card card-accent-orange" style="margin-bottom:16px;">
+            <h3 style="color:var(--accent5);">Parcialmente Enterprise-ready</h3>
+            <p style="font-size:0.85rem; color:var(--muted);">Sistema funcional com melhorias enterprise implementadas. Faltam testes, CI/CD, autenticação, configuração por ambiente e backup automatizado.</p>
+          </div>
+          <div class="card card-accent-purple">
+            <h3 style="color:var(--accent4);">Tempo estimado</h3>
+            <p style="font-size:0.85rem; color:var(--muted);">Testes: 2-3 dias<br>CI/CD: 1-2 dias<br>Autenticação: 3-5 dias<br>Configuração: 1 dia<br>Backup: 1-2 dias</p>
+          </div>
+
+          <div style="margin-top:24px; padding:16px 24px; background:var(--surface); border:1px solid var(--border); border-radius:10px;">
+            <p style="font-size:0.82rem; color:var(--muted);">
+              <strong>Documentação:</strong> <a href="docs/TODO.md" target="_blank" style="color:var(--accent);">docs/TODO.md</a> · <a href="docs/analise-mudancas-training_lb.md" target="_blank" style="color:var(--accent);">analise-mudancas-training_lb.md</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Navigation -->
+<div id="nav">
+  <button class="nav-btn" id="home" title="Início">&#9198;</button>
+  <button class="nav-btn" id="prev">&#8592;</button>
+  <div id="dots"></div>
+  <span id="slide-counter">1 / 26</span>
+  <button class="nav-btn" id="next">&#8594;</button>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const dots = document.getElementById('dots');
+  const counter = document.getElementById('slide-counter');
+  const progress = document.getElementById('progress');
+  const label = document.getElementById('slide-label');
+  let current = 0;
+
+  // Build dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => goTo(i));
+    dots.appendChild(d);
+  });
+
+  function goTo(index, direction) {
+    if (index < 0 || index >= slides.length || index === current) return;
+    if (direction === undefined) direction = index > current ? 1 : -1;
+
+    const from = slides[current];
+    const to   = slides[index];
+
+    // Saída do slide atual
+    from.classList.remove('active');
+    if (direction > 0) {
+      from.classList.add('exit-left');
+      setTimeout(() => from.classList.remove('exit-left'), 400);
+    }
+    // Backward: remover 'active' já faz o slide voltar para
+    // transform:translateX(40px) + opacity:0 via transição do .slide
+
+    // Entrada do próximo slide sem transição para definir posição inicial
+    to.style.transition = 'none';
+    to.style.transform = `translateX(${direction > 0 ? '40px' : '-40px'})`;
+    to.style.opacity = '0';
+    to.offsetHeight; // força reflow — browser renderiza a posição inicial
+
+    // Restaura transição e anima para o estado active
+    to.style.transition = '';
+    to.style.transform = '';
+    to.style.opacity = '';
+    to.classList.add('active');
+
+    document.querySelectorAll('.dot')[current].classList.remove('active');
+    current = index;
+    document.querySelectorAll('.dot')[current].classList.add('active');
+
+    counter.textContent = `${current + 1} / ${slides.length}`;
+    progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+    label.textContent = slides[current].dataset.label || '';
+  }
+
+  document.getElementById('home').addEventListener('click', () => goTo(0, -1));
+  document.getElementById('next').addEventListener('click', () => goTo(current + 1, 1));
+  document.getElementById('prev').addEventListener('click', () => goTo(current - 1, -1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') goTo(current + 1, 1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     goTo(current - 1, -1);
+  });
+
+  // Touch swipe
+  let touchX = 0;
+  document.addEventListener('touchstart', e => touchX = e.touches[0].clientX);
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) goTo(dx < 0 ? current + 1 : current - 1, dx < 0 ? 1 : -1);
+  });
+
+  // Init
+  progress.style.width = `${(1 / slides.length) * 100}%`;
+  label.textContent = slides[0].dataset.label || '';
+</script>
+</body>
+</html>

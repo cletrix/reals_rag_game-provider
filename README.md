@@ -148,6 +148,48 @@ Host (Mac)
 | [`docs/alternativas-comerciais.md`](docs/alternativas-comerciais.md) | Hardware local vs Groq vs cloud |
 | [`docs/alternativas-llm-cloud.md`](docs/alternativas-llm-cloud.md) | Como trocar Groq por Cerebras, Together AI, OpenRouter |
 | [`docs/rag-local-groq.skill`](docs/rag-local-groq.skill) | Skill com decisões técnicas e troubleshooting |
+| [`docs/TODO.md`](docs/TODO.md) | Plano de implementação enterprise |
+| [`docs/api-documentation.md`](docs/api-documentation.md) | Documentação completa da API |
+| [`docs/guia-auditoria.md`](docs/guia-auditoria.md) | Guia de consultas de auditoria LGPD |
+| [`docs/analise-mudancas-training_lb.md`](docs/analise-mudancas-training_lb.md) | Análise de mudanças da branch training_lb |
+
+---
+
+## Melhorias Implementadas (Branch training_lb)
+
+### Funcionalidades Enterprise
+- ✅ **Sistema de Conversas** - Agrupamento de mensagens em conversas com contexto
+- ✅ **Documentação de API** - FastAPI com OpenAPI/Swagger, Pydantic schemas, docs/api-documentation.md
+- ✅ **Health Checks** - Endpoints /health, /readiness, /liveness com verificação de dependências
+- ✅ **Rate Limiting** - Proteção contra abuso (30 requests/60 segundos por IP)
+- ✅ **Logging Estruturado** - Logs JSON com structlog, Request ID para rastreabilidade
+- ✅ **Error Handlers Globais** - Tratamento consistente de erros HTTP, Validation e Generic
+- ✅ **Grafana** - Dashboard de monitoramento configurado (porta 3001)
+- ✅ **Deploy Automatizado** - Script deploy.sh e migrações automáticas via docker-compose
+- ✅ **Auditoria Enterprise** - Schema opcional para compliance LGPD/ISO 27001
+
+### Acesso à API
+- Swagger UI: http://localhost:2468/docs
+- ReDoc: http://localhost:2468/redoc
+- OpenAPI JSON: http://localhost:2468/openapi.json
+- Grafana: http://localhost:3001 (admin/admin)
+
+---
+
+## Plano Futuro (TODO.md)
+
+### Melhorias Pendentes
+- ⚠️ **Testes Automatizados** - Pytest com testes unitários, integração e E2E
+- ⚠️ **CI/CD** - GitHub Actions para pipeline test → build → deploy
+- ⚠️ **Autenticação e Autorização** - OAuth2/LDAP, JWT tokens, RBAC por departamento
+- ⚠️ **Configuração por Ambiente** - .env.dev, .env.staging, .env.prod
+- ⚠️ **Backup Automatizado** - Scripts de backup/restore, cron job
+
+### Status Atual
+- ✅ Funcional
+- 🟡 Parcialmente Enterprise-ready (5 de 10 falhas críticas resolvidas)
+
+**Para Enterprise-ready:** Implementar as melhorias pendentes listadas em docs/TODO.md
 
 ---
 

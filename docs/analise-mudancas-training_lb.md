@@ -2,10 +2,10 @@
 
 ## Estatísticas Gerais
 
-- **Arquivos alterados:** 18
-- **Linhas adicionadas:** 2.850
+- **Arquivos alterados:** 24
+- **Linhas adicionadas:** 3.850
 - **Linhas removidas:** 2.204
-- **Líquido:** +646 linhas
+- **Líquido:** +1.646 linhas
 
 ---
 
@@ -33,6 +33,7 @@
 - `docs/modelo-configurado.md` - Documentação do modelo LLM
 - `docs/TODO.md` - Plano de implementação enterprise
 - `docs/guia-auditoria.md` - Guia de consultas de auditoria
+- `docs/api-documentation.md` - Documentação completa da API
 - `CHANGELOG_CONVERSATIONS.md` - Changelog do sistema de conversas
 
 **Impacto:** ✅ **Positivo** - Documentação profissional para enterprise
@@ -48,9 +49,21 @@
 - `save_query()` modificado para criar conversas automaticamente
 
 **web/main.py:**
-- Adicionados 89 linhas
+- Adicionados 89 linhas (conversas) + 150 linhas (melhorias enterprise)
 - Novos endpoints: `/api/conversations`, `/api/conversations/{id}/messages`
 - Endpoint `/chat/stream` modificado para aceitar `conversation_id`
+- Adicionados endpoints `/health`, `/readiness`, `/liveness`
+- Adicionados middleware de logging estruturado e rate limiting
+- Adicionados error handlers globais
+- Validação Pydantic no chat/stream
+
+**web/schemas.py:**
+- Novo arquivo com Pydantic models para validação e documentação
+- 200+ linhas de schemas para todos os endpoints
+
+**web/logger.py:**
+- Novo arquivo para logging estruturado
+- Integração com structlog para logs JSON
 
 **web/indexer.py:**
 - Simplificado (123 linhas removidas)
@@ -77,6 +90,8 @@
 **Arquivos adicionados:**
 - `deploy.sh` - Script automatizado de deploy
 - Atualização de `docker-compose.yml` para migrações automáticas
+- Atualização de `docker-compose.yml` com Grafana
+- Atualização de `docker-compose.yml` com health checks
 - Atualização de `Makefile` com comandos `deploy` e `deploy-full`
 
 **Impacto:** ✅ **Positivo** - Deploy automatizado e profissional
@@ -150,6 +165,94 @@
 
 ---
 
+### 4. Documentação de API (Nova Funcionalidade)
+
+**Funcionalidade:**
+- FastAPI com OpenAPI/Swagger automático
+- Pydantic schemas para validação e documentação
+- Documentação completa em docs/api-documentation.md
+- Exemplos de requests/responses
+- Swagger UI em /docs, ReDoc em /redoc
+
+**Benefícios:**
+- Documentação interativa
+- Validação automática de inputs
+- Facilita integração para desenvolvedores
+
+**Implementação:** ✅ **Profissional**
+
+---
+
+### 5. Health Checks e Monitoring (Nova Funcionalidade)
+
+**Funcionalidade:**
+- Endpoint /health com verificação de dependências
+- Endpoint /readiness para Kubernetes/Docker
+- Endpoint /liveness para liveness probe
+- Health checks no docker-compose.yml
+- Grafana configurado para dashboards
+
+**Benefícios:**
+- Monitoramento de saúde do sistema
+- Integração com orquestradores
+- Dashboards visuais em Grafana
+
+**Implementação:** ✅ **Profissional**
+
+---
+
+### 6. Rate Limiting (Nova Funcionalidade)
+
+**Funcionalidade:**
+- Rate limiting in-memory por IP
+- Configurável via environment variables
+- 30 requests por 60 segundos (padrão)
+- Aplicado em /api e /chat
+
+**Benefícios:**
+- Proteção contra abuso
+- Prevenção de DDoS simples
+- Controle de carga
+
+**Implementação:** ✅ **Profissional**
+
+---
+
+### 7. Logging Estruturado (Nova Funcionalidade)
+
+**Funcionalidade:**
+- Logging estruturado com structlog
+- Logs em formato JSON
+- Request ID em cada request
+- Middleware de logging
+- Logging de erros estruturado
+
+**Benefícios:**
+- Logs estruturados para análise
+- Rastreabilidade de requests
+- Facilita debug em produção
+
+**Implementação:** ✅ **Profissional**
+
+---
+
+### 8. Error Handlers Globais (Nova Funcionalidade)
+
+**Funcionalidade:**
+- Error handlers para HTTPException
+- Error handlers para ValidationError
+- Error handler genérico para exceções
+- Respostas de erro padronizadas
+
+**Benefícios:**
+- Tratamento de erros consistente
+- Logs de erros estruturados
+- Melhor UX para erros
+
+**Implementação:** ✅ **Profissional**
+
+---
+
 ## Falhas Identificadas
 
 ### 1. **Falta de Testes Automatizados** ⚠️
@@ -184,7 +287,7 @@
 
 ---
 
-### 3. **Falta de Monitoramento e Logging Estruturado** ⚠️
+### 3. **Falta de Monitoramento e Logging Estruturado** ✅ **RESOLVIDO**
 
 **Problema:**
 - Logs são stdout/stderr apenas
@@ -193,14 +296,16 @@
 
 **Impacto:** Dificuldade de debug em produção
 
-**Recomendação:**
-- Implementar logging estruturado (JSON)
-- Adicionar integração com Loki/ELK
-- Configurar alertas baseados em logs
+**Solução Implementada:**
+- ✅ Logging estruturado com structlog
+- ✅ Logs em formato JSON
+- ✅ Request ID em cada request
+- ⚠️ Integração com Loki/ELK (pendente)
+- ⚠️ Alertas baseados em logs (pendente)
 
 ---
 
-### 4. **Falta de Validação de Input** ⚠️
+### 4. **Falta de Validação de Input** ✅ **RESOLVIDO**
 
 **Problema:**
 - Não há validação de schemas (Pydantic)
@@ -209,10 +314,11 @@
 
 **Impacto:** Segurança comprometida
 
-**Recomendação:**
-- Adicionar Pydantic para validação
-- Sanitizar inputs de usuário
-- Adicionar rate limiting
+**Solução Implementada:**
+- ✅ Pydantic para validação
+- ✅ Validação de tamanho de inputs
+- ✅ Rate limiting implementado
+- ⚠️ Sanitização de inputs (pendente)
 
 ---
 
@@ -248,7 +354,7 @@
 
 ---
 
-### 7. **Falta de Health Checks Específicos** ⚠️
+### 7. **Falta de Health Checks Específicos** ✅ **RESOLVIDO**
 
 **Problema:**
 - Health check básico do docker-compose
@@ -257,14 +363,16 @@
 
 **Impacto:** Dificuldade de monitoramento
 
-**Recomendação:**
-- Adicionar endpoint /health
-- Verificar dependências (Ollama, Qdrant)
-- Adicionar /readiness e /liveness
+**Solução Implementada:**
+- ✅ Endpoint /health com verificação de dependências
+- ✅ Endpoint /readiness para Kubernetes/Docker
+- ✅ Endpoint /liveness para liveness probe
+- ✅ Health checks no docker-compose.yml
+- ✅ Verificação de Ollama, Qdrant, PostgreSQL
 
 ---
 
-### 8. **Falta de Documentação de API** ⚠️
+### 8. **Falta de Documentação de API** ✅ **RESOLVIDO**
 
 **Problema:**
 - Não há OpenAPI/Swagger
@@ -273,14 +381,16 @@
 
 **Impacto:** Dificuldade para desenvolvedores
 
-**Recomendação:**
-- Adicionar FastAPI automatic docs (/docs)
-- Documentar todos os endpoints
-- Adicionar exemplos de requests/responses
+**Solução Implementada:**
+- ✅ FastAPI automatic docs (/docs)
+- ✅ Documentação completa em docs/api-documentation.md
+- ✅ Pydantic schemas para validação
+- ✅ Exemplos de requests/responses
+- ✅ Swagger UI e ReDoc
 
 ---
 
-### 9. **Falta de Tratamento de Erros Robusto** ⚠️
+### 9. **Falta de Tratamento de Erros Robusto** 🟡 **PARCIALMENTE RESOLVIDO**
 
 **Problema:**
 - Try/catch básico
@@ -289,10 +399,11 @@
 
 **Impacto:** Dificuldade de debug
 
-**Recomendação:**
-- Implementar logging estruturado de erros
-- Adicionar retry com exponential backoff
-- Criar exceções customizadas
+**Solução Implementada:**
+- ✅ Logging estruturado de erros
+- ✅ Error handlers globais
+- ✅ Exceções customizadas parciais
+- ⚠️ Retry com exponential backoff (pendente)
 
 ---
 
@@ -512,47 +623,87 @@ reals_rag_game-provider/
 
 ---
 
+### 4. Estrutura de Apresentação (Atualizada)
+
+**Apresentação HTML (presentations/index.html):**
+
+**Antes (main):**
+- 16 slides cobrindo RAG, arquitetura, Ollama, Groq, Docker, tokenização, armazenamento, banco de dados, comandos, chat, fluxos e créditos
+
+**Depois (training_lb):**
+- 26 slides (16 originais + 1 transição + 9 slides de melhorias)
+- **SLIDE 17 - TRANSIÇÃO MELHORIAS**: Aviso de que a partir daí são as funcionalidades enterprise da branch training_lb
+- **SLIDE 18 - SISTEMA DE CONVERSAS**: Tabela de banco de dados, código CRUD, endpoints API
+- **SLIDE 19 - DOCUMENTAÇÃO DE API**: Pydantic schemas, endpoints documentados, Swagger/ReDoc
+- **SLIDE 20 - HEALTH CHECKS**: Diagrama SVG dos 3 endpoints, response JSON examples
+- **SLIDE 21 - RATE LIMITING**: Código middleware, configuração environment, badges técnicos
+- **SLIDE 22 - LOGGING ESTRUTURADO**: Código structlog, exemplo log JSON, Request ID
+- **SLIDE 23 - ERROR HANDLERS**: Código dos 3 handlers, response examples
+- **SLIDE 24 - GRAFANA**: Configuração docker-compose, dashboards list
+- **SLIDE 25 - DEPLOY AUTOMATIZADO**: Script deploy.sh, migrações automáticas
+- **SLIDE 26 - PLANO FUTURO**: 5 melhorias pendentes, status atual, tempo estimado
+
+**Correções CSS aplicadas:**
+- Alterado de `inset: 0` para posicionamento explícito (`top: 0; left: 0; right: 0; bottom: 0`)
+- Adicionado `overflow-y: auto` para permitir scroll vertical se conteúdo for muito grande
+- Isso resolveu problema de corte de conteúdo em cima e embaixo
+
+**Impacto:** ✅ **Positivo** - Apresentação profissional com detalhes técnicos das melhorias enterprise
+
+---
+
 ## Conclusão
 
 ### O que foi mudado da main para training_lb:
 
 1. **Sistema de conversas** - Nova funcionalidade principal
 2. **Auditoria enterprise** - Schema opcional para compliance
-3. **Documentação profissional** - TODO, guias, changelog
+3. **Documentação profissional** - TODO, guias, changelog, API docs
 4. **Deploy automatizado** - Script e docker-compose melhorado
 5. **Limpeza** - Remoção de arquivos não utilizados
+6. **Documentação de API** - FastAPI docs, Pydantic schemas, docs/api-documentation.md
+7. **Health checks e monitoring** - /health, /readiness, /liveness, Grafana
+8. **Rate limiting** - In-memory por IP, configurável
+9. **Logging estruturado** - structlog, JSON logs, Request ID
+10. **Error handlers globais** - HTTP, Validation, Generic handlers
 
 ### Teve mudança de estrutura do projeto?
 
 **Sim, mas focada em funcionalidade:**
 - Banco de dados: adição de tabela `conversations`
-- Código: funções CRUD para conversas
+- Código: funções CRUD para conversas, schemas Pydantic, logger
 - Frontend: sidebar de conversas
-- Deploy: script automatizado
+- Deploy: script automatizado, Grafana, health checks
 
 **Não houve reestruturação arquitetural major.**
 
 ### Falhas e melhorias para tornar mais profissional:
 
-**Falhas Críticas:**
-1. Sem testes automatizados
-2. Sem CI/CD
-3. Sem autenticação/autorização
-4. Sem validação de input
-5. Sem logging estruturado
+**Falhas Críticas - Status Atual:**
+1. ⚠️ Sem testes automatizados
+2. ⚠️ Sem CI/CD
+3. ⚠️ Sem autenticação/autorização
+4. ✅ Validação de input (RESOLVIDO)
+5. ✅ Logging estruturado (RESOLVIDO)
+6. ⚠️ Sem configuração por ambiente
+7. ✅ Health checks (RESOLVIDO)
+8. ✅ Documentação de API (RESOLVIDO)
+9. 🟡 Tratamento de erros (PARCIALMENTE RESOLVIDO)
+10. ⚠️ Sem backup automatizado
 
 **Melhorias Recomendadas (prioridade alta):**
-1. Adicionar pytest
-2. Implementar GitHub Actions
-3. Implementar autenticação OAuth2/LDAP
-4. Adicionar Pydantic para validação
-5. Adicionar logging estruturado
-6. Adicionar documentação OpenAPI
-7. Adicionar configuração por ambiente
-8. Adicionar monitoramento Prometheus/Grafana
-9. Adicionar rate limiting
-10. Adicionar scripts de backup/restore
+1. ✅ Adicionar Pydantic para validação (RESOLVIDO)
+2. ✅ Adicionar logging estruturado (RESOLVIDO)
+3. ✅ Adicionar documentação OpenAPI (RESOLVIDO)
+4. ✅ Adicionar health checks (RESOLVIDO)
+5. ✅ Adicionar rate limiting (RESOLVIDO)
+6. ✅ Adicionar error handlers globais (RESOLVIDO)
+7. ⚠️ Adicionar pytest (PENDENTE)
+8. ⚠️ Implementar GitHub Actions (PENDENTE)
+9. ⚠️ Implementar autenticação OAuth2/LDAP (PENDENTE)
+10. ⚠️ Adicionar configuração por ambiente (PENDENTE)
+11. ⚠️ Adicionar scripts de backup/restore (PENDENTE)
 
-**Status Atual:** ✅ **Funcional** mas ❌ **Ainda não Enterprise-ready**
+**Status Atual:** ✅ **Funcional** 🟡 **Parcialmente Enterprise-ready**
 
-**Para Enterprise-ready:** Implementar as 10 melhorias listadas acima.
+**Para Enterprise-ready:** Implementar as melhorias pendentes listadas acima.
