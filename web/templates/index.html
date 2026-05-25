@@ -51,6 +51,13 @@
              :class="currentProvider === 'groq' ? 'bg-purple-400' : 'bg-green-400'"></div>
         <span x-text="currentProvider === 'groq' ? 'Groq' : 'Ollama'"></span>
       </div>
+      <button @click="logout()" 
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-gray-200 text-xs transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+        </svg>
+        <span class="hidden sm:inline">Sair</span>
+      </button>
     </div>
   </header>
 
@@ -641,6 +648,13 @@
         newFolderAutoIndex: false,
 
         async init() {
+          // Check authentication
+          const token = localStorage.getItem('auth_token');
+          if (!token) {
+            window.location.href = '/login';
+            return;
+          }
+
           await Promise.all([this.loadConversations(), this.loadStats()]);
           const s = await fetch('/api/settings').then(r => r.json());
           this.currentProvider = s.llm_provider || 'groq';
@@ -1018,6 +1032,12 @@
           } finally {
             this.deletingFile = null;
           }
+        },
+
+        logout() {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user_data');
+          window.location.href = '/login';
         },
       };
     }

@@ -178,6 +178,12 @@ async def generic_exception_handler(request: Request, exc: Exception):
 # Páginas
 # ---------------------------------------------------------------------------
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Página de login."""
+    return templates.TemplateResponse(request, "login.html")
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     history = await get_history(limit=50)
