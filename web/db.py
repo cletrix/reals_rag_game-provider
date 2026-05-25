@@ -221,3 +221,306 @@ async def get_stats() -> dict:
            FROM queries"""
     )
     return dict(row)
+
+
+# ---------------------------------------------------------------------------
+# Folders CRUD
+# ---------------------------------------------------------------------------
+
+async def create_folder(name: str, path: str, auto_index: bool = False) -> UUID:
+    """Cria uma nova pasta e retorna o ID."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """INSERT INTO folders (name, path, auto_index)
+           VALUES ($1, $2, $3)
+           RETURNING id""",
+        name,
+        path,
+        auto_index,
+    )
+    return row["id"]
+
+
+async def get_folders(limit: int = 100) -> list[dict]:
+    """Retorna lista de pastas ordenadas por atualização mais recente."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """SELECT id, name, path, size_bytes, file_count,
+                  indexed_at, auto_index, created_at, updated_at
+           FROM folders
+           ORDER BY updated_at DESC
+           LIMIT $1""",
+        limit,
+    )
+    result = []
+    for r in rows:
+        item = dict(r)
+        if hasattr(item.get("created_at"), "isoformat"):
+            item["created_at"] = item["created_at"].isoformat()
+        if hasattr(item.get("updated_at"), "isoformat"):
+            item["updated_at"] = item["updated_at"].isoformat()
+        if hasattr(item.get("indexed_at"), "isoformat"):
+            item["indexed_at"] = item["indexed_at"].isoformat()
+        if item.get("id"):
+            item["id"] = str(item["id"])
+        result.append(item)
+    return result
+
+
+async def get_folder(folder_id: str) -> dict | None:
+    """Retorna dados de uma pasta específica."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """SELECT id, name, path, size_bytes, file_count,
+                  indexed_at, auto_index, created_at, updated_at
+           FROM folders
+           WHERE id = $1::uuid""",
+        folder_id,
+    )
+    if not row:
+        return None
+    result = dict(row)
+    if hasattr(result.get("created_at"), "isoformat"):
+        result["created_at"] = result["created_at"].isoformat()
+    if hasattr(result.get("updated_at"), "isoformat"):
+        result["updated_at"] = result["updated_at"].isoformat()
+    if hasattr(result.get("indexed_at"), "isoformat"):
+        result["indexed_at"] = result["indexed_at"].isoformat()
+    if result.get("id"):
+        result["id"] = str(result["id"])
+    return result
+
+
+async def update_folder(folder_id: str, name: str | None = None, auto_index: bool | None = None) -> bool:
+    """Atualiza dados de uma pasta."""
+    pool = await get_pool()
+    updates = []
+    params = []
+    param_idx = 1
+
+    if name is not None:
+        updates.append(f"name = ${param_idx}")
+        params.append(name)
+        param_idx += 1
+
+    if auto_index is not None:
+        updates.append(f"auto_index = ${param_idx}")
+        params.append(auto_index)
+        param_idx += 1
+
+    if not updates:
+        return False
+
+    params.append(folder_id)
+    query = f"""UPDATE folders SET {', '.join(updates)}, updated_at = NOW()
+                WHERE id = ${param_idx}::uuid"""
+
+    result = await pool.execute(query, *params)
+    return result == "UPDATE 1"
+
+
+async def delete_folder(folder_id: str) -> bool:
+    """Deleta uma pasta (cascade deleta documentos)."""
+    pool = await get_pool()
+    result = await pool.execute(
+        "DELETE FROM folders WHERE id = $1::uuid",
+        folder_id,
+    )
+    return result == "DELETE 1"
+
+
+async def get_folder_by_path(path: str) -> dict | None:
+    """Retorna pasta pelo caminho do filesystem."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """SELECT id, name, path, size_bytes, file_count,
+                  indexed_at, auto_index, created_at, updated_at
+           FROM folders
+           WHERE path = $1""",
+        path,
+    )
+    if not row:
+        return None
+    result = dict(row)
+    if hasattr(result.get("created_at"), "isoformat"):
+        result["created_at"] = result["created_at"].isoformat()
+    if hasattr(result.get("updated_at"), "isoformat"):
+        result["updated_at"] = result["updated_at"].isoformat()
+    if hasattr(result.get("indexed_at"), "isoformat"):
+        result["indexed_at"] = result["indexed_at"].isoformat()
+    if result.get("id"):
+        result["id"] = str(result["id"])
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Documents CRUD
+# ---------------------------------------------------------------------------
+
+async def create_document(
+    folder_id: str,
+    name: str,
+    path: str,
+    size_bytes: int,
+    mtime: float,
+) -> UUID:
+    """Cria um novo documento e retorna o ID."""
+    import datetime
+    pool = await get_pool()
+    # Converter timestamp float para datetime sem timezone
+    mtime_dt = datetime.datetime.fromtimestamp(mtime)
+    row = await pool.fetchrow(
+        """INSERT INTO documents (folder_id, name, path, size_bytes, mtime)
+           VALUES ($1::uuid, $2, $3, $4, $5)
+           RETURNING id""",
+        folder_id,
+        name,
+        path,
+        size_bytes,
+        mtime_dt,
+    )
+    return row["id"]
+
+
+async def get_documents(folder_id: str | None = None, limit: int = 100) -> list[dict]:
+    """Retorna lista de documentos. Se folder_id fornecido, filtra por pasta."""
+    import datetime
+    pool = await get_pool()
+    if folder_id:
+        rows = await pool.fetch(
+            """SELECT id, folder_id, name, path, size_bytes,
+                      indexed, indexed_at, mtime, created_at, updated_at
+               FROM documents
+               WHERE folder_id = $1::uuid
+               ORDER BY name ASC
+               LIMIT $2""",
+            folder_id,
+            limit,
+        )
+    else:
+        rows = await pool.fetch(
+            """SELECT id, folder_id, name, path, size_bytes,
+                      indexed, indexed_at, mtime, created_at, updated_at
+               FROM documents
+               ORDER BY name ASC
+               LIMIT $1""",
+            limit,
+        )
+    result = []
+    for r in rows:
+        item = dict(r)
+        if hasattr(item.get("created_at"), "isoformat"):
+            item["created_at"] = item["created_at"].isoformat()
+        if hasattr(item.get("updated_at"), "isoformat"):
+            item["updated_at"] = item["updated_at"].isoformat()
+        if hasattr(item.get("indexed_at"), "isoformat"):
+            item["indexed_at"] = item["indexed_at"].isoformat()
+        # Converter datetime mtime para timestamp float
+        if isinstance(item.get("mtime"), datetime.datetime):
+            item["mtime"] = item["mtime"].timestamp()
+        if item.get("id"):
+            item["id"] = str(item["id"])
+        if item.get("folder_id"):
+            item["folder_id"] = str(item["folder_id"])
+        result.append(item)
+    return result
+
+
+async def get_document(document_id: str) -> dict | None:
+    """Retorna dados de um documento específico."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """SELECT id, folder_id, name, path, size_bytes,
+                  indexed, indexed_at, mtime, created_at, updated_at
+           FROM documents
+           WHERE id = $1::uuid""",
+        document_id,
+    )
+    if not row:
+        return None
+    result = dict(row)
+    if hasattr(result.get("created_at"), "isoformat"):
+        result["created_at"] = result["created_at"].isoformat()
+    if hasattr(result.get("updated_at"), "isoformat"):
+        result["updated_at"] = result["updated_at"].isoformat()
+    if hasattr(result.get("indexed_at"), "isoformat"):
+        result["indexed_at"] = result["indexed_at"].isoformat()
+    if result.get("id"):
+        result["id"] = str(result["id"])
+    if result.get("folder_id"):
+        result["folder_id"] = str(result["folder_id"])
+    return result
+
+
+async def update_document_indexed(document_id: str, indexed: bool = True) -> bool:
+    """Atualiza status de indexação de um documento."""
+    pool = await get_pool()
+    result = await pool.execute(
+        """UPDATE documents
+           SET indexed = $1, indexed_at = NOW(), updated_at = NOW()
+           WHERE id = $2::uuid""",
+        indexed,
+        document_id,
+    )
+    return result == "UPDATE 1"
+
+
+async def delete_document(document_id: str) -> bool:
+    """Deleta um documento."""
+    pool = await get_pool()
+    result = await pool.execute(
+        "DELETE FROM documents WHERE id = $1::uuid",
+        document_id,
+    )
+    return result == "DELETE 1"
+
+
+async def get_document_by_path(path: str) -> dict | None:
+    """Retorna documento pelo caminho do filesystem."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """SELECT id, folder_id, name, path, size_bytes,
+                  indexed, indexed_at, mtime, created_at, updated_at
+           FROM documents
+           WHERE path = $1""",
+        path,
+    )
+    if not row:
+        return None
+    result = dict(row)
+    if hasattr(result.get("created_at"), "isoformat"):
+        result["created_at"] = result["created_at"].isoformat()
+    if hasattr(result.get("updated_at"), "isoformat"):
+        result["updated_at"] = result["updated_at"].isoformat()
+    if hasattr(result.get("indexed_at"), "isoformat"):
+        result["indexed_at"] = result["indexed_at"].isoformat()
+    if result.get("id"):
+        result["id"] = str(result["id"])
+    if result.get("folder_id"):
+        result["folder_id"] = str(result["folder_id"])
+    return result
+
+
+async def get_auto_index_folders() -> list[dict]:
+    """Retorna pastas com auto_index habilitado."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """SELECT id, name, path, size_bytes, file_count,
+                  indexed_at, auto_index, created_at, updated_at
+           FROM folders
+           WHERE auto_index = TRUE
+           ORDER BY updated_at DESC"""
+    )
+    result = []
+    for r in rows:
+        item = dict(r)
+        if hasattr(item.get("created_at"), "isoformat"):
+            item["created_at"] = item["created_at"].isoformat()
+        if hasattr(item.get("updated_at"), "isoformat"):
+            item["updated_at"] = item["updated_at"].isoformat()
+        if hasattr(item.get("indexed_at"), "isoformat"):
+            item["indexed_at"] = item["indexed_at"].isoformat()
+        if item.get("id"):
+            item["id"] = str(item["id"])
+        result.append(item)
+    return result

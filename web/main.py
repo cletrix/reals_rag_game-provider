@@ -21,7 +21,10 @@ sys.path.insert(0, "/app")
 from db import (
     get_history, get_query_by_id, get_stats, save_query,
     get_conversations, get_conversation, get_conversation_messages,
-    create_conversation, update_conversation_title, get_pool
+    create_conversation, update_conversation_title, get_pool,
+    create_folder, get_folders, get_folder, update_folder, delete_folder, get_folder_by_path,
+    create_document, get_documents, get_document, update_document_indexed, delete_document, get_document_by_path,
+    get_auto_index_folders
 )
 from logger import log
 from settings_manager import get_all_settings, update_setting
@@ -33,9 +36,12 @@ from schemas import (
     MessageResponse,
     ChatRequest,
     HealthResponse,
-    ErrorResponse
+    ErrorResponse,
+    FolderResponse, FolderCreate, FolderUpdate,
+    DocumentResponse, FolderUploadResponse
 )
 import indexer
+import folder_scanner
 
 DATA_RAW = Path("/app/data/raw")
 
@@ -531,6 +537,230 @@ async def api_index_status():
     Retorna status atual da indexação.
     """
     return indexer.get_state()
+
+
+# ---------------------------------------------------------------------------
+# API — Folders (pastas de documentos)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/folders", response_model=List[FolderResponse], tags=["Folders"])
+async def api_get_folders():
+    """
+    Retorna lista de pastas ordenadas por atualização mais recente.
+    """
+    folders = await get_folders(limit=100)
+    return folders
+
+
+@app.post("/api/folders", response_model=FolderResponse, tags=["Folders"])
+async def api_create_folder(request: Request):
+    """
+    Cria uma nova pasta.
+
+    - **name**: Nome da pasta
+    - **path**: Caminho do filesystem
+    - **auto_index**: Habilitar indexação automática (opcional)
+    """
+    body = await request.json()
+    try:
+        payload = FolderCreate(**body)
+    except Exception:
+        return JSONResponse(status_code=422, content={"error": "ValidationError", "message": "Dados inválidos"})
+
+    folder_id = await create_folder(
+        name=payload.name,
+        path=payload.path,
+        auto_index=payload.auto_index
+    )
+    folder = await get_folder(str(folder_id))
+    return folder
+
+
+@app.get("/api/folders/{folder_id}", response_model=FolderResponse, tags=["Folders"])
+async def api_get_folder(folder_id: str):
+    """
+    Retorna dados de uma pasta específica.
+
+    - **folder_id**: ID da pasta
+    """
+    folder = await get_folder(folder_id)
+    if not folder:
+        raise HTTPException(status_code=404, detail="Pasta não encontrada")
+    return folder
+
+
+@app.patch("/api/folders/{folder_id}", tags=["Folders"])
+async def api_update_folder(folder_id: str, request: Request):
+    """
+    Atualiza dados de uma pasta (nome ou auto_index).
+
+    - **folder_id**: ID da pasta
+    """
+    body = await request.json()
+    try:
+        payload = FolderUpdate(**body)
+    except Exception:
+        return JSONResponse(status_code=422, content={"error": "ValidationError", "message": "Dados inválidos"})
+
+    updated = await update_folder(
+        folder_id=folder_id,
+        name=payload.name,
+        auto_index=payload.auto_index
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Pasta não encontrada")
+    return {"ok": True}
+
+
+@app.delete("/api/folders/{folder_id}", tags=["Folders"])
+async def api_delete_folder(folder_id: str):
+    """
+    Deleta uma pasta (cascade deleta documentos).
+
+    - **folder_id**: ID da pasta
+    """
+    deleted = await delete_folder(folder_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Pasta não encontrada")
+    return {"ok": True}
+
+
+@app.get("/api/folders/{folder_id}/documents", response_model=List[DocumentResponse], tags=["Folders"])
+async def api_get_folder_documents(folder_id: str):
+    """
+    Retorna todos os documentos de uma pasta.
+
+    - **folder_id**: ID da pasta
+    """
+    folder = await get_folder(folder_id)
+    if not folder:
+        raise HTTPException(status_code=404, detail="Pasta não encontrada")
+
+    documents = await get_documents(folder_id=folder_id, limit=1000)
+    return documents
+
+
+@app.post("/api/folders/upload", response_model=FolderUploadResponse, tags=["Folders"])
+async def api_upload_folder(files: list[UploadFile] = File(...), folder_name: str = None, auto_index: bool = False):
+    """
+    Faz upload de múltiplos arquivos e cria uma pasta para organizá-los.
+
+    - **files**: Lista de arquivos para upload
+    - **folder_name**: Nome da pasta (opcional, usa timestamp se não fornecido)
+    - **auto_index**: Habilitar indexação automática (opcional)
+    """
+    MAX_FOLDER_SIZE = int(os.getenv("MAX_FOLDER_SIZE_MB", "100")) * 1024 * 1024  # 100MB padrão
+
+    DATA_RAW.mkdir(parents=True, exist_ok=True)
+
+    # Determinar nome da pasta
+    if not folder_name:
+        folder_name = f"upload_{int(time.time())}"
+
+    # Criar caminho da pasta
+    folder_path = DATA_RAW / folder_name
+    folder_path.mkdir(parents=True, exist_ok=True)
+
+    # Validar tamanho total
+    total_size = 0
+    valid_files = []
+
+    for upload in files:
+        suffix = Path(upload.filename).suffix.lower()
+        if suffix not in {".pdf", ".md", ".txt"}:
+            continue
+
+        content = await upload.read()
+        file_size = len(content)
+        total_size += file_size
+
+        if total_size > MAX_FOLDER_SIZE:
+            return JSONResponse(
+                status_code=413,
+                content={"error": "PayloadTooLarge", "message": f"Tamanho total excede limite de {MAX_FOLDER_SIZE // (1024*1024)}MB"}
+            )
+
+        valid_files.append((upload.filename, content))
+
+    if not valid_files:
+        return JSONResponse(status_code=400, content={"error": "BadRequest", "message": "Nenhum arquivo válido fornecido"})
+
+    # Criar pasta no banco
+    folder_id = await create_folder(
+        name=folder_name,
+        path=str(folder_path),
+        auto_index=auto_index
+    )
+
+    # Salvar arquivos e criar registros
+    saved_files = []
+    for filename, content in valid_files:
+        dest = folder_path / filename
+        dest.write_bytes(content)
+
+        # Criar registro de documento
+        await create_document(
+            folder_id=str(folder_id),
+            name=filename,
+            path=str(dest),
+            size_bytes=len(content),
+            mtime=dest.stat().st_mtime
+        )
+
+        saved_files.append(filename)
+
+    return {
+        "folder_id": str(folder_id),
+        "folder_name": folder_name,
+        "files_uploaded": len(saved_files),
+        "total_size_bytes": total_size,
+        "files": saved_files
+    }
+
+
+@app.post("/api/folders/{folder_id}/index", tags=["Folders"])
+async def api_index_folder(folder_id: str):
+    """
+    Inicia indexação de documentos de uma pasta específica.
+
+    - **folder_id**: ID da pasta
+    """
+    folder = await get_folder(folder_id)
+    if not folder:
+        raise HTTPException(status_code=404, detail="Pasta não encontrada")
+
+    started = await indexer.start_indexing()
+    if not started:
+        return {"ok": False, "message": "Indexação já em andamento"}
+    return {"ok": True, "message": f"Indexação iniciada para pasta {folder['name']}"}
+
+
+@app.post("/api/folders/scanner/start", tags=["Folders"])
+async def api_start_scanner():
+    """
+    Inicia o scanner de pastas para indexação automática.
+    """
+    started = await folder_scanner.start_folder_scanner()
+    if not started:
+        return {"ok": False, "message": "Scanner já está rodando"}
+    return {"ok": True, "message": "Scanner iniciado"}
+
+
+@app.post("/api/folders/scanner/stop", tags=["Folders"])
+async def api_stop_scanner():
+    """
+    Para o scanner de pastas.
+    """
+    await folder_scanner.stop_folder_scanner()
+    return {"ok": True, "message": "Scanner parado"}
+
+
+@app.get("/api/folders/scanner/status", tags=["Folders"])
+async def api_scanner_status():
+    """
+    Retorna status do scanner de pastas.
+    """
+    return {"running": folder_scanner.is_scanner_running()}
 
 
 # ---------------------------------------------------------------------------

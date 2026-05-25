@@ -1,4 +1,4 @@
-.PHONY: build rebuild index chat web web-bg psql reset deploy deploy-full
+.PHONY: build rebuild index chat web web-bg run psql reset deploy deploy-full test test-cov
 
 build:
 	ollama pull $$(grep EMBED_MODEL .env | cut -d= -f2)
@@ -27,6 +27,10 @@ web-bg:
 	docker compose up -d qdrant postgres web
 	@echo "UI disponível em http://localhost:2468"
 
+run:
+	docker compose up -d
+	@echo "Sistema iniciado! Acesse http://localhost:2468"
+
 psql:
 	docker compose exec postgres psql -U rag -d ragdb
 
@@ -42,3 +46,9 @@ deploy-full:
 	docker compose build --no-cache
 	docker compose up -d
 	@echo "Deploy completo! Acesse http://localhost:2468"
+
+test:
+	python -m pytest tests/ -v
+
+test-cov:
+	python -m pytest tests/ --cov=web --cov-report=html --cov-report=term

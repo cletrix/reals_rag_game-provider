@@ -1048,7 +1048,131 @@ volatilidade.
   </div>
 
   <!-- ══════════════════════════════════════════
-       SLIDE 13 — FLUXO DE INDEXAÇÃO
+       SLIDE 13 — SISTEMA DE PASTAS
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="PASTAS">
+    <div class="slide-inner">
+      <h2>Sistema de <span class="hl-green">Pastas</span> e Auto-Index</h2>
+
+      <div class="grid-2">
+        <div class="card card-accent-green">
+          <h3>Organização de Documentos</h3>
+          <p style="font-size:0.85rem;">Documentos organizados em pastas/folders com CRUD completo via API. Upload de pastas inteiras com validação de tamanho (100MB padrão).</p>
+        </div>
+        <div class="card card-accent-green">
+          <h3>Scanner Automático</h3>
+          <p style="font-size:0.85rem;">Scanner periódico (5 minutos) detecta novos arquivos em pastas com <code>auto_index</code> habilitado e indexa automaticamente.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>Frontend</h3>
+          <p style="font-size:0.85rem;">Toggle entre visualização de pastas e arquivos. Criação de pastas com opção de auto-index. Seleção de pasta para ver documentos.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>API Endpoints</h3>
+          <p style="font-size:0.85rem;"><code>/api/folders</code> — CRUD completo<br><code>/api/folders/upload</code> — Upload de pastas<br><code>/api/folders/{id}/index</code> — Indexação manual</p>
+        </div>
+      </div>
+
+      <pre style="margin-top:20px; max-width:960px;">
+<span class="comment-line"># Criar pasta com auto-index</span>
+<span class="prompt">$</span> <span class="cmd">curl -X POST</span> <span class="arg">http://localhost:2468/api/folders</span> \
+  <span class="arg">-H "Content-Type: application/json"</span> \
+  <span class="arg">-d '{"name":"curriculos","path":"/app/data/raw/curriculos","auto_index":true}'</span>
+
+<span class="comment-line"># Upload de arquivos para pasta</span>
+<span class="prompt">$</span> <span class="cmd">curl -X POST</span> <span class="arg">http://localhost:2468/api/folders/upload</span> \
+  <span class="arg">-F "files=@cv1.pdf"</span> \
+  <span class="arg">-F "folder_name=curriculos"</span></pre>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 14 — TESTES UNITÁRIOS
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="TESTES">
+    <div class="slide-inner">
+      <h2>Suite de <span class="hl-purple">Testes Unitários</span></h2>
+
+      <div class="grid-3">
+        <div class="card card-accent-purple">
+          <h3>Testes de API</h3>
+          <p style="font-size:0.85rem;">Endpoints de conversas, folders, health checks e rate limiting. Mock de banco de dados para testes rápidos.</p>
+        </div>
+        <div class="card card-accent-purple">
+          <h3>Testes de Schemas</h3>
+          <p style="font-size:0.85rem;">Validação Pydantic para todos os modelos. Testes de validação de input e edge cases.</p>
+        </div>
+        <div class="card card-accent-purple">
+          <h3>Testes de DB</h3>
+          <p style="font-size:0.85rem;">Funções CRUD para folders, documents e conversations. Testes assíncronos com pytest-asyncio.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>Folder Scanner</h3>
+          <p style="font-size:0.85rem;">Testes do scanner automático de pastas. Mock de filesystem e indexação.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>Cobertura</h3>
+          <p style="font-size:0.85rem;">pytest-cov para relatório de cobertura. Comando <code>make test-cov</code> gera HTML.</p>
+        </div>
+        <div class="card card-accent-blue">
+          <h3>CI/CD Ready</h3>
+          <p style="font-size:0.85rem;">Estrutura pronta para integração com GitHub Actions. Testes executam em segundos.</p>
+        </div>
+      </div>
+
+      <pre style="margin-top:20px; max-width:960px;">
+<span class="comment-line"># Executar todos os testes</span>
+<span class="prompt">$</span> <span class="cmd">make test</span>
+
+<span class="comment-line"># Executar com cobertura</span>
+<span class="prompt">$</span> <span class="cmd">make test-cov</span>
+
+<span class="comment-line"># Testar módulo específico</span>
+<span class="prompt">$</span> <span class="cmd">python -m pytest</span> <span class="arg">tests/test_folders.py -v</span></pre>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 15 — DATADOG
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="DATADOG">
+    <div class="slide-inner">
+      <h2><span class="hl-red">Datadog</span> Integration</h2>
+
+      <div class="grid-2">
+        <div class="card card-accent-red">
+          <h3>Migração do Grafana</h3>
+          <p style="font-size:0.85rem;">Substituído Grafana self-hosted por Datadog SaaS. Monitoramento profissional com 700+ integrações nativas.</p>
+        </div>
+        <div class="card card-accent-red">
+          <h3>Profile Opcional</h3>
+          <p style="font-size:0.85rem;">Datadog usa Docker Compose profile <code>monitoring</code>. Só inicia quando configurado com API Key.</p>
+        </div>
+        <div class="card card-accent-orange">
+          <h3>Logs e Métricas</h3>
+          <p style="font-size:0.85rem;">Coleta automática de logs de todos os containers. Métricas de CPU, memória, rede e disco.</p>
+        </div>
+        <div class="card card-accent-orange">
+          <h3>APM Nativo</h3>
+          <p style="font-size:0.85rem;">Application Performance Monitoring para rastreamento de requisições. Traces distribuídos.</p>
+        </div>
+      </div>
+
+      <pre style="margin-top:20px; max-width:960px;">
+<span class="comment-line"># .env — configurar Datadog</span>
+<span class="token-o">DD_API_KEY</span>=<span class="token-s">sua_api_key_aqui</span>
+<span class="token-o">DD_SITE</span>=<span class="token-s">datadoghq.com</span>
+
+<span class="comment-line"># Iniciar com Datadog</span>
+<span class="prompt">$</span> <span class="cmd">docker compose --profile monitoring up -d</span>
+
+<span class="comment-line"># Iniciar sem Datadog (padrão)</span>
+<span class="prompt">$</span> <span class="cmd">docker compose up -d</span></pre>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SLIDE 16 — FLUXO DE INDEXAÇÃO
   ══════════════════════════════════════════ -->
   <div class="slide" data-label="INGEST">
     <div class="slide-inner">
@@ -2013,7 +2137,7 @@ volatilidade.
   <button class="nav-btn" id="home" title="Início">&#9198;</button>
   <button class="nav-btn" id="prev">&#8592;</button>
   <div id="dots"></div>
-  <span id="slide-counter">1 / 26</span>
+  <span id="slide-counter">1 / 29</span>
   <button class="nav-btn" id="next">&#8594;</button>
 </div>
 

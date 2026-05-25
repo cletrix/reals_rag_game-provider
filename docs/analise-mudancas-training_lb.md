@@ -2,10 +2,10 @@
 
 ## Estatísticas Gerais
 
-- **Arquivos alterados:** 24
-- **Linhas adicionadas:** 3.850
+- **Arquivos alterados:** 35
+- **Linhas adicionadas:** 5.200
 - **Linhas removidas:** 2.204
-- **Líquido:** +1.646 linhas
+- **Líquido:** +2.996 linhas
 
 ---
 
@@ -98,7 +98,92 @@
 
 ---
 
-### 6. Limpeza de Arquivos
+### 6. Sistema de Pastas e Auto-Index (Nova Funcionalidade)
+
+**Funcionalidade:**
+- Organização de documentos em pastas/folders
+- Upload de pastas inteiras com validação de tamanho (100MB padrão)
+- Scanner automático periódico (5 minutos) para detectar novos arquivos
+- Indexação automática de pastas com `auto_index` habilitado
+- CRUD completo de pastas via API
+- Frontend com toggle entre visualização de pastas e arquivos
+
+**Arquivos adicionados:**
+- `migrations/002_add_folders.sql` - Migração do banco de dados
+- `web/folder_scanner.py` - Scanner automático de pastas
+- `web/db.py` - Funções CRUD para folders e documents
+- `web/schemas.py` - Schemas Pydantic para folders
+
+**Benefícios:**
+- Organização profissional de documentos
+- Indexação automática sem intervenção manual
+- Validação de tamanho para evitar sobrecarga
+- UX melhorada com visualização hierárquica
+
+**Implementação:** ✅ **Profissional**
+
+---
+
+### 7. Testes Unitários (Nova Funcionalidade)
+
+**Funcionalidade:**
+- Suite completa de testes unitários com pytest
+- Testes para endpoints de conversas e folders
+- Testes para health checks e rate limiting
+- Testes para schemas Pydantic
+- Testes para funções do banco de dados
+- Testes para folder scanner
+- Cobertura de código com pytest-cov
+
+**Arquivos adicionados:**
+- `tests/__init__.py`
+- `tests/conftest.py` - Fixtures compartilhadas
+- `tests/test_health.py`
+- `tests/test_conversations.py`
+- `tests/test_folders.py`
+- `tests/test_schemas.py`
+- `tests/test_db.py`
+- `tests/test_folder_scanner.py`
+- `tests/test_rate_limiting.py`
+- `tests/README.md` - Documentação dos testes
+- `requirements-dev.txt` - Dependências de desenvolvimento
+
+**Benefícios:**
+- Validação automática de funcionalidades
+- Prevenção de regressões
+- Documentação viva do código
+- Integração com CI/CD
+
+**Implementação:** ✅ **Profissional**
+
+---
+
+### 8. Datadog Integration (Nova Funcionalidade)
+
+**Funcionalidade:**
+- Migração de Grafana para Datadog
+- Monitoramento opcional via Docker Compose profiles
+- Coleta de logs, métricas e APM
+- Dashboard automático no Datadog
+- Configuração via variáveis de ambiente
+
+**Arquivos adicionados:**
+- `docs/datadog-setup.md` - Documentação de configuração
+- Atualização de `docker-compose.yml` com serviço datadog (profile monitoring)
+- Atualização de `.env.example` com DD_API_KEY e DD_SITE
+
+**Benefícios:**
+- Monitoramento SaaS profissional
+- Logs e métricas centralizados
+- APM nativo
+- 700+ integrações nativas
+- Alertas inteligentes
+
+**Implementação:** ✅ **Profissional**
+
+---
+
+### 9. Limpeza de Arquivos
 
 **Arquivos removidos:**
 - `data/disabled.json`
