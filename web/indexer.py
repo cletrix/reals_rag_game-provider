@@ -15,13 +15,14 @@ from pathlib import Path
 
 from qdrant_client import QdrantClient
 
-DATA_DIR   = Path("/app/data/raw")
-INDEX_FILE = Path("/app/data/indexed.json")
-SPEED_FILE = Path("/app/data/embed_speed.json")
-COLLECTION = os.getenv("QDRANT_COLLECTION", "landf_docs")
-QDRANT_URL = os.getenv("QDRANT_URL", "http://qdrant:6333")
-CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "1024"))
-CHUNK_OV   = int(os.getenv("CHUNK_OVERLAP", "200"))
+DATA_DIR      = Path("/app/data/raw")
+INDEX_FILE    = Path("/app/data/indexed.json")
+SPEED_FILE    = Path("/app/data/embed_speed.json")
+DISABLED_FILE = Path("/app/data/disabled.json")
+COLLECTION    = os.getenv("QDRANT_COLLECTION", "landf_docs")
+QDRANT_URL    = os.getenv("QDRANT_URL", "http://qdrant:6333")
+CHUNK_SIZE    = int(os.getenv("CHUNK_SIZE", "1024"))
+CHUNK_OV      = int(os.getenv("CHUNK_OVERLAP", "200"))
 
 _state: dict = {
     "running":      False,
@@ -41,8 +42,9 @@ def get_state() -> dict:
 
 
 def get_files() -> list[dict]:
-    """Lista todos os arquivos em data/raw/ com status de indexação."""
-    indexed = _load_indexed()
+    """Lista todos os arquivos em data/raw/ com status de indexação e habilitação."""
+    indexed  = _load_indexed()
+    disabled = _load_disabled()
     files = []
     if not DATA_DIR.exists():
         return files
@@ -51,18 +53,107 @@ def get_files() -> list[dict]:
             stat = f.stat()
             key = str(f)
             is_indexed = key in indexed and indexed[key] == stat.st_mtime
+            is_enabled = key not in disabled
             files.append({
-                "name":       f.name,
-                "path":       key,
-                "size_kb":    round(stat.st_size / 1024, 1),
-                "indexed":    is_indexed,
-                "mtime":      stat.st_mtime,
+                "name":    f.name,
+                "path":    key,
+                "size_kb": round(stat.st_size / 1024, 1),
+                "indexed": is_indexed,
+                "enabled": is_enabled,
+                "mtime":   stat.st_mtime,
             })
     return files
 
 
 def _load_indexed() -> dict:
     return json.loads(INDEX_FILE.read_text()) if INDEX_FILE.exists() else {}
+
+
+def _load_disabled() -> dict:
+    return json.loads(DISABLED_FILE.read_text()) if DISABLED_FILE.exists() else {}
+
+
+def _save_disabled(data: dict) -> None:
+    DISABLED_FILE.write_text(json.dumps(data, indent=2))
+
+
+def _remove_from_qdrant(filename: str) -> None:
+    """Remove todos os vetores de um arquivo da collection Qdrant."""
+    try:
+        from qdrant_client import QdrantClient
+        from qdrant_client.http import models as qm
+        client = QdrantClient(url=QDRANT_URL)
+        if not client.collection_exists(COLLECTION):
+            return
+        client.delete(
+            collection_name=COLLECTION,
+            points_selector=qm.FilterSelector(
+                filter=qm.Filter(
+                    must=[qm.FieldCondition(
+                        key="file_name",
+                        match=qm.MatchValue(value=filename),
+                    )]
+                )
+            ),
+        )
+    except Exception as exc:
+        print(f"Aviso: não foi possível remover vetores de {filename}: {exc}")
+
+
+def _find_file(filename: str) -> Path:
+    if not DATA_DIR.exists():
+        raise FileNotFoundError(filename)
+    for f in DATA_DIR.rglob("*"):
+        if f.name == filename and f.is_file():
+            return f
+    raise FileNotFoundError(filename)
+
+
+def toggle_file(filename: str) -> dict:
+    """Habilita ou desabilita um arquivo (remove/restaura seus vetores no Qdrant)."""
+    target   = _find_file(filename)
+    key      = str(target)
+    disabled = _load_disabled()
+
+    if key in disabled:
+        # re-habilitar: remove do disabled e remove do indexed para re-indexar
+        del disabled[key]
+        _save_disabled(disabled)
+        indexed = _load_indexed()
+        if key in indexed:
+            del indexed[key]
+            INDEX_FILE.write_text(json.dumps(indexed, indent=2))
+        return {"ok": True, "enabled": True}
+    else:
+        # desabilitar: add ao disabled, remove do indexed, remove vetores
+        disabled[key] = True
+        _save_disabled(disabled)
+        indexed = _load_indexed()
+        if key in indexed:
+            del indexed[key]
+            INDEX_FILE.write_text(json.dumps(indexed, indent=2))
+        _remove_from_qdrant(filename)
+        return {"ok": True, "enabled": False}
+
+
+def delete_file(filename: str) -> dict:
+    """Remove arquivo do disco, do indexed.json, do disabled.json e do Qdrant."""
+    target = _find_file(filename)
+    key    = str(target)
+
+    indexed = _load_indexed()
+    if key in indexed:
+        del indexed[key]
+        INDEX_FILE.write_text(json.dumps(indexed, indent=2))
+
+    disabled = _load_disabled()
+    if key in disabled:
+        del disabled[key]
+        _save_disabled(disabled)
+
+    _remove_from_qdrant(filename)
+    target.unlink()
+    return {"ok": True, "deleted": filename}
 
 
 async def start_indexing() -> bool:
@@ -93,7 +184,8 @@ def _do_index() -> None:
 
     try:
         # ── 1. descobrir arquivos novos ──────────────────────────────────
-        indexed = _load_indexed()
+        indexed  = _load_indexed()
+        disabled = _load_disabled()
 
         if not DATA_DIR.exists():
             raise RuntimeError(f"Diretório {DATA_DIR} não existe")
@@ -101,6 +193,7 @@ def _do_index() -> None:
         all_files = [
             f for f in DATA_DIR.rglob("*")
             if f.suffix in {".pdf", ".md", ".txt"} and f.is_file()
+            and str(f) not in disabled
         ]
         new_files = [
             f for f in all_files
