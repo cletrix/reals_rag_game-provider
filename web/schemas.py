@@ -398,7 +398,118 @@ class FolderUploadResponse(BaseModel):
                 "folder_name": "curriculos",
                 "files_uploaded": 5,
                 "total_size_bytes": 10485760,
-                "files": ["curriculo_joao.pdf", "curriculo_maria.pdf", "curriculo_pedro.pdf"]
+                "files": ["cv1.pdf", "cv2.pdf", "cv3.pdf", "cv4.pdf", "cv5.pdf"]
+            }
+        }
+    )
+
+
+# --- User/Auth Schemas ---
+
+class UserCreate(BaseModel):
+    """Schema para criação de usuário"""
+    username: str = Field(..., min_length=3, max_length=50, description="Nome de usuário único")
+    email: str = Field(..., description="Endereço de email único")
+    password: str = Field(..., min_length=6, description="Senha (mínimo 6 caracteres)")
+    full_name: Optional[str] = Field(default=None, description="Nome completo")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "joao",
+                "email": "joao@example.com",
+                "password": "senha123",
+                "full_name": "João Silva"
+            }
+        }
+    )
+
+
+class UserLogin(BaseModel):
+    """Schema para login de usuário"""
+    username: str = Field(..., description="Nome de usuário ou email")
+    password: str = Field(..., description="Senha")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "username": "joao",
+                "password": "senha123"
+            }
+        }
+    )
+
+
+class UserResponse(BaseModel):
+    """Resposta de usuário (sem senha)"""
+    id: str = Field(description="ID único do usuário")
+    username: str = Field(description="Nome de usuário")
+    email: str = Field(description="Email do usuário")
+    full_name: Optional[str] = Field(default=None, description="Nome completo")
+    is_active: bool = Field(default=True, description="Se a conta está ativa")
+    is_admin: bool = Field(default=False, description="Se é administrador")
+    created_at: str = Field(description="Timestamp de criação (ISO 8601)")
+    updated_at: str = Field(description="Timestamp de atualização (ISO 8601)")
+    last_login_at: Optional[str] = Field(default=None, description="Último login (ISO 8601)")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "username": "joao",
+                "email": "joao@example.com",
+                "full_name": "João Silva",
+                "is_active": True,
+                "is_admin": False,
+                "created_at": "2026-05-25T18:00:00+00:00",
+                "updated_at": "2026-05-25T18:00:00+00:00",
+                "last_login_at": "2026-05-25T19:30:00+00:00"
+            }
+        }
+    )
+
+
+class TokenResponse(BaseModel):
+    """Resposta de token de autenticação"""
+    access_token: str = Field(description="Token JWT de acesso")
+    token_type: str = Field(default="bearer", description="Tipo do token")
+    user: UserResponse = Field(description="Dados do usuário")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "token_type": "bearer",
+                "user": {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "username": "joao",
+                    "email": "joao@example.com",
+                    "full_name": "João Silva",
+                    "is_active": True,
+                    "is_admin": False,
+                    "created_at": "2026-05-25T18:00:00+00:00",
+                    "updated_at": "2026-05-25T18:00:00+00:00",
+                    "last_login_at": "2026-05-25T19:30:00+00:00"
+                }
+            }
+        }
+    )
+
+
+class UserUpdate(BaseModel):
+    """Schema para atualização de usuário"""
+    email: Optional[str] = Field(default=None, description="Novo email")
+    full_name: Optional[str] = Field(default=None, description="Novo nome completo")
+    password: Optional[str] = Field(default=None, min_length=6, description="Nova senha")
+    is_active: Optional[bool] = Field(default=None, description="Status da conta")
+    is_admin: Optional[bool] = Field(default=None, description="Status de administrador")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "email": "novoemail@example.com",
+                "full_name": "João Silva Jr.",
+                "is_active": True
             }
         }
     )

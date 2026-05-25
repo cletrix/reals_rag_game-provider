@@ -11,3 +11,6 @@ llama-index-llms-groq
 llama-index-embeddings-ollama
 llama-index-vector-stores-qdrant
 qdrant-client
+bcrypt
+python-jose[cryptography]
+passlib[bcrypt]

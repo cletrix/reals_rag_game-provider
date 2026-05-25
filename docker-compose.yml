@@ -27,6 +27,7 @@ services:
       - ./db/migration-add-conversations.sql:/docker-entrypoint-initdb.d/02-migration-conversations.sql:ro
       - ./db/schema-auditoria-enterprise.sql:/docker-entrypoint-initdb.d/03-audit-schema.sql:ro
       - ./migrations/002_add_folders.sql:/docker-entrypoint-initdb.d/04-add-folders.sql:ro
+      - ./migrations/003_add_users.sql:/docker-entrypoint-initdb.d/05-add-users.sql:ro
     ports:
       - "5432:5432"
     restart: unless-stopped

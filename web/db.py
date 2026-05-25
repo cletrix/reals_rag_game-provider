@@ -522,5 +522,177 @@ async def get_auto_index_folders() -> list[dict]:
             item["indexed_at"] = item["indexed_at"].isoformat()
         if item.get("id"):
             item["id"] = str(item["id"])
+    return result
+
+
+# --- User Functions ---
+
+async def create_user(username: str, email: str, password_hash: str, 
+                     full_name: str | None = None, is_admin: bool = False) -> UUID:
+    """Cria um novo usuário e retorna o ID."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """INSERT INTO users (username, email, password_hash, full_name, is_admin)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id""",
+        username, email, password_hash, full_name, is_admin,
+    )
+    return row["id"]
+
+
+async def get_user_by_username(username: str) -> dict | None:
+    """Retorna usuário pelo nome de usuário (inclui password_hash)."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """SELECT id, username, email, password_hash, full_name,
+                  is_active, is_admin, created_at, updated_at, last_login_at
+           FROM users
+           WHERE username = $1""",
+        username,
+    )
+    if not row:
+        return None
+    result = dict(row)
+    if hasattr(result.get("created_at"), "isoformat"):
+        result["created_at"] = result["created_at"].isoformat()
+    if hasattr(result.get("updated_at"), "isoformat"):
+        result["updated_at"] = result["updated_at"].isoformat()
+    if hasattr(result.get("last_login_at"), "isoformat"):
+        result["last_login_at"] = result["last_login_at"].isoformat()
+    if result.get("id"):
+        result["id"] = str(result["id"])
+    return result
+
+
+async def get_user_by_email(email: str) -> dict | None:
+    """Retorna usuário pelo email (inclui password_hash)."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """SELECT id, username, email, password_hash, full_name,
+                  is_active, is_admin, created_at, updated_at, last_login_at
+           FROM users
+           WHERE email = $1""",
+        email,
+    )
+    if not row:
+        return None
+    result = dict(row)
+    if hasattr(result.get("created_at"), "isoformat"):
+        result["created_at"] = result["created_at"].isoformat()
+    if hasattr(result.get("updated_at"), "isoformat"):
+        result["updated_at"] = result["updated_at"].isoformat()
+    if hasattr(result.get("last_login_at"), "isoformat"):
+        result["last_login_at"] = result["last_login_at"].isoformat()
+    if result.get("id"):
+        result["id"] = str(result["id"])
+    return result
+
+
+async def get_user_by_id(user_id: str) -> dict | None:
+    """Retorna usuário pelo ID (sem password_hash)."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """SELECT id, username, email, full_name,
+                  is_active, is_admin, created_at, updated_at, last_login_at
+           FROM users
+           WHERE id = $1::uuid""",
+        user_id,
+    )
+    if not row:
+        return None
+    result = dict(row)
+    if hasattr(result.get("created_at"), "isoformat"):
+        result["created_at"] = result["created_at"].isoformat()
+    if hasattr(result.get("updated_at"), "isoformat"):
+        result["updated_at"] = result["updated_at"].isoformat()
+    if hasattr(result.get("last_login_at"), "isoformat"):
+        result["last_login_at"] = result["last_login_at"].isoformat()
+    if result.get("id"):
+        result["id"] = str(result["id"])
+    return result
+
+
+async def update_user_last_login(user_id: str) -> bool:
+    """Atualiza o timestamp de último login do usuário."""
+    pool = await get_pool()
+    result = await pool.execute(
+        """UPDATE users
+           SET last_login_at = NOW()
+           WHERE id = $1::uuid""",
+        user_id,
+    )
+    return result == "UPDATE 1"
+
+
+async def update_user(user_id: str, email: str | None = None, 
+                      full_name: str | None = None, password_hash: str | None = None,
+                      is_active: bool | None = None, is_admin: bool | None = None) -> bool:
+    """Atualiza dados do usuário."""
+    pool = await get_pool()
+    
+    # Build dynamic update query
+    updates = []
+    params = []
+    param_count = 1
+    
+    if email is not None:
+        updates.append(f"email = ${param_count}")
+        params.append(email)
+        param_count += 1
+    
+    if full_name is not None:
+        updates.append(f"full_name = ${param_count}")
+        params.append(full_name)
+        param_count += 1
+    
+    if password_hash is not None:
+        updates.append(f"password_hash = ${param_count}")
+        params.append(password_hash)
+        param_count += 1
+    
+    if is_active is not None:
+        updates.append(f"is_active = ${param_count}")
+        params.append(is_active)
+        param_count += 1
+    
+    if is_admin is not None:
+        updates.append(f"is_admin = ${param_count}")
+        params.append(is_admin)
+        param_count += 1
+    
+    if not updates:
+        return False
+    
+    params.append(user_id)
+    query = f"""UPDATE users
+                SET {', '.join(updates)}
+                WHERE id = ${param_count}::uuid"""
+    
+    result = await pool.execute(query, *params)
+    return result == "UPDATE 1"
+
+
+async def list_users(skip: int = 0, limit: int = 100) -> list[dict]:
+    """Lista usuários (sem password_hash)."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """SELECT id, username, email, full_name,
+                  is_active, is_admin, created_at, updated_at, last_login_at
+           FROM users
+           ORDER BY created_at DESC
+           LIMIT $1 OFFSET $2""",
+        limit, skip,
+    )
+    result = []
+    for r in rows:
+        item = dict(r)
+        if hasattr(item.get("created_at"), "isoformat"):
+            item["created_at"] = item["created_at"].isoformat()
+        if hasattr(item.get("updated_at"), "isoformat"):
+            item["updated_at"] = item["updated_at"].isoformat()
+        if hasattr(item.get("last_login_at"), "isoformat"):
+            item["last_login_at"] = item["last_login_at"].isoformat()
+        if item.get("id"):
+            item["id"] = str(item["id"])
         result.append(item)
     return result

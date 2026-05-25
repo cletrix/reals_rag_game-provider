@@ -24,7 +24,9 @@ from db import (
     create_conversation, update_conversation_title, get_pool,
     create_folder, get_folders, get_folder, update_folder, delete_folder, get_folder_by_path,
     create_document, get_documents, get_document, update_document_indexed, delete_document, get_document_by_path,
-    get_auto_index_folders
+    get_auto_index_folders,
+    create_user, get_user_by_username, get_user_by_email, get_user_by_id,
+    update_user_last_login, update_user, list_users
 )
 from logger import log
 from settings_manager import get_all_settings, update_setting
@@ -38,8 +40,10 @@ from schemas import (
     HealthResponse,
     ErrorResponse,
     FolderResponse, FolderCreate, FolderUpdate,
-    DocumentResponse, FolderUploadResponse
+    DocumentResponse, FolderUploadResponse,
+    UserCreate, UserLogin, UserResponse, TokenResponse, UserUpdate
 )
+import auth
 import indexer
 import folder_scanner
 
@@ -831,6 +835,168 @@ async def health_check():
             "services": services,
         },
     )
+
+
+# --- Authentication Endpoints ---
+
+@app.post("/api/auth/register", tags=["Auth"])
+async def register(user_data: UserCreate):
+    """
+    Registra um novo usuário.
+
+    Cria uma conta de usuário com username e email únicos.
+    """
+    # Check if username already exists
+    existing_user = await get_user_by_username(user_data.username)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Nome de usuário já existe")
+    
+    # Check if email already exists
+    existing_email = await get_user_by_email(user_data.email)
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+    
+    # Hash password
+    password_hash = auth.get_password_hash(user_data.password)
+    
+    # Create user
+    user_id = await create_user(
+        username=user_data.username,
+        email=user_data.email,
+        password_hash=password_hash,
+        full_name=user_data.full_name,
+        is_admin=False
+    )
+    
+    # Get created user
+    user = await get_user_by_id(str(user_id))
+    return user
+
+
+@app.post("/api/auth/login", tags=["Auth"])
+async def login(login_data: UserLogin):
+    """
+    Faz login de usuário e retorna token JWT.
+
+    Aceita username ou email no campo username.
+    """
+    # Try to find user by username or email
+    user = await get_user_by_username(login_data.username)
+    if not user:
+        user = await get_user_by_email(login_data.username)
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    
+    # Check if user is active
+    if not user.get("is_active"):
+        raise HTTPException(status_code=403, detail="Conta desativada")
+    
+    # Verify password
+    if not auth.verify_password(login_data.password, user.get("password_hash")):
+        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+    
+    # Update last login
+    await update_user_last_login(user["id"])
+    
+    # Create access token
+    access_token = auth.create_access_token(
+        data={"sub": user["username"], "user_id": user["id"]}
+    )
+    
+    # Remove password_hash from response
+    user.pop("password_hash", None)
+    
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse(**user)
+    )
+
+
+@app.get("/api/auth/me", tags=["Auth"])
+async def get_current_user_info(request: Request):
+    """
+    Retorna informações do usuário autenticado.
+
+    Requer header Authorization: Bearer <token>
+    """
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token não fornecido")
+    
+    token = auth_header.split(" ")[1]
+    payload = auth.decode_access_token(token)
+    
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+    
+    username = payload.get("sub")
+    user = await get_user_by_username(username)
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    
+    # Remove password_hash from response
+    user.pop("password_hash", None)
+    
+    return UserResponse(**user)
+
+
+# --- User Management Endpoints ---
+
+@app.get("/api/users", tags=["Users"])
+async def get_users(skip: int = 0, limit: int = 100):
+    """
+    Lista todos os usuários.
+
+    Retorna lista de usuários sem senhas.
+    """
+    users = await list_users(skip=skip, limit=limit)
+    return users
+
+
+@app.get("/api/users/{user_id}", tags=["Users"])
+async def get_user(user_id: str):
+    """
+    Retorna um usuário específico pelo ID.
+
+    Retorna dados do usuário sem senha.
+    """
+    user = await get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    return user
+
+
+@app.put("/api/users/{user_id}", tags=["Users"])
+async def update_user_endpoint(user_id: str, user_data: UserUpdate):
+    """
+    Atualiza dados de um usuário.
+
+    Permite atualizar email, nome, senha, status e admin.
+    """
+    # Build password hash if provided
+    password_hash = None
+    if user_data.password:
+        password_hash = auth.get_password_hash(user_data.password)
+    
+    # Update user
+    success = await update_user(
+        user_id=user_id,
+        email=user_data.email,
+        full_name=user_data.full_name,
+        password_hash=password_hash,
+        is_active=user_data.is_active,
+        is_admin=user_data.is_admin
+    )
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado ou nenhum dado para atualizar")
+    
+    # Return updated user
+    user = await get_user_by_id(user_id)
+    return user
 
 
 @app.get("/readiness", tags=["Health"])
