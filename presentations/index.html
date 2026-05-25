@@ -2130,6 +2130,91 @@ volatilidade.
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════
+       SLIDE 27 — AUTENTICAÇÃO
+  ══════════════════════════════════════════ -->
+  <div class="slide" data-label="AUTENTICAÇÃO">
+    <div class="slide-inner">
+      <div class="section-header">
+        <span class="tag" style="background:#161b22;border:1px solid #30363d;color:#8b949e;">✅ IMPLEMENTADO</span>
+        <h2>Sistema de <span class="hl-green">Autenticação</span></h2>
+        <p style="color:var(--muted); font-size:0.9rem;">Login, JWT tokens e gestão de usuários</p>
+      </div>
+
+      <div class="grid-2" style="max-width:960px;">
+        <div>
+          <h3 style="color:var(--accent2); margin-bottom:16px;">🔐 Como Funciona</h3>
+          <ul class="step-list" style="max-width:480px;">
+            <li>
+              <div class="step-num" style="background:var(--accent2);">1</div>
+              <div class="step-body">
+                <strong>Login via Email</strong>
+                <span>Usuários fazem login com email e senha. Senhas são hashadas com bcrypt.</span>
+              </div>
+            </li>
+            <li>
+              <div class="step-num" style="background:var(--accent2);">2</div>
+              <div class="step-body">
+                <strong>JWT Tokens</strong>
+                <span>Após login, recebe token JWT válido por 24h (configurável). Token enviado no header Authorization.</span>
+              </div>
+            </li>
+            <li>
+              <div class="step-num" style="background:var(--accent2);">3</div>
+              <div class="step-body">
+                <strong>Middleware de Autenticação</strong>
+                <span>Endpoints protegidos verificam o token. Sem token, redireciona para /login.</span>
+              </div>
+            </li>
+            <li>
+              <div class="step-num" style="background:var(--accent2);">4</div>
+              <div class="step-body">
+                <strong>Logout</strong>
+                <span>Remove token do localStorage e redireciona para página de login.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h3 style="color:var(--accent); margin-bottom:16px;">👥 Usuários Padrão</h3>
+          <div class="card card-accent-blue" style="margin-bottom:16px;">
+            <h3 style="color:var(--accent);">Administrador</h3>
+            <p style="font-size:0.85rem; color:var(--muted);">
+              <strong>Email:</strong> admin@empresa.com<br>
+              <strong>Senha:</strong> admin123<br>
+              <strong>Role:</strong> admin
+            </p>
+          </div>
+          <div class="card card-accent-purple" style="margin-bottom:16px;">
+            <h3 style="color:var(--accent4);">Desenvolvedores</h3>
+            <p style="font-size:0.85rem; color:var(--muted);">
+              dev1@empresa.com / dev123<br>
+              dev2@empresa.com / dev123<br>
+              bets1@empresa.com / dev123<br>
+              rh1@empresa.com / dev123
+            </p>
+          </div>
+          <div class="card card-accent-orange">
+            <h3 style="color:var(--accent5);">⚠️ Segurança</h3>
+            <p style="font-size:0.85rem; color:var(--muted);">Alterar senhas padrão em produção. Veja docs/auth-setup.md</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:24px; padding:16px 24px; background:var(--surface); border:1px solid var(--border); border-radius:10px; max-width:960px;">
+        <h3 style="color:var(--accent); margin-bottom:12px;">📡 Endpoints de Autenticação</h3>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <span class="badge" style="color:var(--accent2); border-color:var(--accent2);">POST /api/auth/login</span>
+          <span class="badge" style="color:var(--accent2); border-color:var(--accent2);">POST /api/auth/register</span>
+          <span class="badge" style="color:var(--accent2); border-color:var(--accent2);">GET /api/auth/me</span>
+          <span class="badge" style="color:var(--accent); border-color:var(--accent);">GET /api/users</span>
+          <span class="badge" style="color:var(--accent); border-color:var(--accent);">PUT /api/users/{id}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Navigation -->
@@ -2137,7 +2222,7 @@ volatilidade.
   <button class="nav-btn" id="home" title="Início">&#9198;</button>
   <button class="nav-btn" id="prev">&#8592;</button>
   <div id="dots"></div>
-  <span id="slide-counter">1 / 29</span>
+  <span id="slide-counter">1 / 30</span>
   <button class="nav-btn" id="next">&#8594;</button>
 </div>
 

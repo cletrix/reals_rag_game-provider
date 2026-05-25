@@ -1,4 +1,4 @@
-.PHONY: build rebuild index chat web web-bg run psql reset deploy deploy-full test test-cov
+.PHONY: build rebuild index chat web web-bg run psql reset deploy deploy-full test test-cov test-docker test-auth
 
 build:
 	ollama pull $$(grep EMBED_MODEL .env | cut -d= -f2)
@@ -28,6 +28,7 @@ web-bg:
 	@echo "UI disponível em http://localhost:2468"
 
 run:
+	$(MAKE) test-auth
 	docker compose up -d
 	@echo "Sistema iniciado! Acesse http://localhost:2468"
 
@@ -52,3 +53,11 @@ test:
 
 test-cov:
 	python -m pytest tests/ --cov=web --cov-report=html --cov-report=term
+
+test-docker:
+	docker compose build web
+	docker compose run --rm web pytest /app/tests/ -v
+
+test-auth:
+	docker compose build web
+	docker compose run --rm web pytest /app/tests/test_auth.py -v

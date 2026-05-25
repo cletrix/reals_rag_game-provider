@@ -6,9 +6,9 @@ from uuid import UUID
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'web'))
 
-from web import db
+import db
 
 
 @pytest.mark.asyncio

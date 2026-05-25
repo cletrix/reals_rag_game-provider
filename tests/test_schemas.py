@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from web.schemas import (
+from schemas import (
     FolderResponse, FolderCreate, FolderUpdate,
     DocumentResponse, FolderUploadResponse,
     ConversationResponse, ConversationDetail, ConversationUpdate,

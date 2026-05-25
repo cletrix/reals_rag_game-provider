@@ -77,6 +77,19 @@ Documentos ficam locais. Embeddings são gerados na sua máquina (Metal GPU). Ap
 
 ## Interface web (`http://localhost:2468`)
 
+### Autenticação
+- **Login obrigatório** — Acesso via email e senha
+- **Usuários padrão** criados automaticamente:
+  - `admin@empresa.com` / `admin123` (role: admin)
+  - `dev1@empresa.com` / `dev123` (role: user)
+  - `dev2@empresa.com` / `dev123` (role: user)
+  - `bets1@empresa.com` / `dev123` (role: user)
+  - `rh1@empresa.com` / `dev123` (role: user)
+- **JWT tokens** — Sessão válida por 24 horas (configurável)
+- **Logout** — Botão no header para encerrar sessão
+
+⚠️ **IMPORTANTE**: Altere as senhas padrão em produção! Veja `docs/auth-setup.md` para detalhes.
+
 ### Chat
 - **Sidebar** — histórico de todas as conversas; clique para reabrir qualquer uma
 - **Streaming** — a resposta aparece token a token enquanto o LLM processa
@@ -124,6 +137,8 @@ Documentos ficam locais. Embeddings são gerados na sua máquina (Metal GPU). Ap
 | `QDRANT_COLLECTION` | `landf_docs` | Nome da collection no Qdrant |
 | `CHUNK_SIZE` | `1024` | Tokens por chunk na indexação |
 | `SIMILARITY_TOP_K` | `2` | Chunks recuperados por query |
+| `SECRET_KEY` | — | Chave secreta para JWT tokens (autenticação) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | Tempo de expiração do token em minutos |
 
 ---
 
@@ -145,6 +160,7 @@ Host (Mac)
 
 | Arquivo | Conteúdo |
 |---|---|
+| [`docs/auth-setup.md`](docs/auth-setup.md) | Guia completo de autenticação e gestão de usuários |
 | [`docs/alternativas-comerciais.md`](docs/alternativas-comerciais.md) | Hardware local vs Groq vs cloud |
 | [`docs/alternativas-llm-cloud.md`](docs/alternativas-llm-cloud.md) | Como trocar Groq por Cerebras, Together AI, OpenRouter |
 | [`docs/rag-local-groq.skill`](docs/rag-local-groq.skill) | Skill com decisões técnicas e troubleshooting |

@@ -5,9 +5,9 @@ from pathlib import Path
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'web'))
 
-from web import folder_scanner
+import folder_scanner
 
 
 @pytest.mark.asyncio

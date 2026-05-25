@@ -5,9 +5,10 @@ from unittest.mock import AsyncMock, patch
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+# Adiciona o diretório web ao path para importar main
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'web'))
 
-from web.main import app
+from main import app
 
 
 @pytest.fixture
@@ -19,7 +20,7 @@ def client():
 @pytest.fixture
 def mock_db_pool():
     """Mock do pool de conexões do banco de dados."""
-    with patch('web.db.get_pool') as mock:
+    with patch('db.get_pool') as mock:
         pool = AsyncMock()
         mock.return_value = pool
         yield pool

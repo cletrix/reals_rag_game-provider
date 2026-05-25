@@ -527,49 +527,25 @@ async def get_auto_index_folders() -> list[dict]:
 
 # --- User Functions ---
 
-async def create_user(username: str, email: str, password_hash: str, 
-                     full_name: str | None = None, is_admin: bool = False) -> UUID:
+async def create_user(email: str, password_hash: str, name: str, 
+                     department: str = "IT", role: str = "user") -> UUID:
     """Cria um novo usuário e retorna o ID."""
     pool = await get_pool()
     row = await pool.fetchrow(
-        """INSERT INTO users (username, email, password_hash, full_name, is_admin)
+        """INSERT INTO users (email, password_hash, name, department, role)
            VALUES ($1, $2, $3, $4, $5)
            RETURNING id""",
-        username, email, password_hash, full_name, is_admin,
+        email, password_hash, name, department, role,
     )
     return row["id"]
-
-
-async def get_user_by_username(username: str) -> dict | None:
-    """Retorna usuário pelo nome de usuário (inclui password_hash)."""
-    pool = await get_pool()
-    row = await pool.fetchrow(
-        """SELECT id, username, email, password_hash, full_name,
-                  is_active, is_admin, created_at, updated_at, last_login_at
-           FROM users
-           WHERE username = $1""",
-        username,
-    )
-    if not row:
-        return None
-    result = dict(row)
-    if hasattr(result.get("created_at"), "isoformat"):
-        result["created_at"] = result["created_at"].isoformat()
-    if hasattr(result.get("updated_at"), "isoformat"):
-        result["updated_at"] = result["updated_at"].isoformat()
-    if hasattr(result.get("last_login_at"), "isoformat"):
-        result["last_login_at"] = result["last_login_at"].isoformat()
-    if result.get("id"):
-        result["id"] = str(result["id"])
-    return result
 
 
 async def get_user_by_email(email: str) -> dict | None:
     """Retorna usuário pelo email (inclui password_hash)."""
     pool = await get_pool()
     row = await pool.fetchrow(
-        """SELECT id, username, email, password_hash, full_name,
-                  is_active, is_admin, created_at, updated_at, last_login_at
+        """SELECT id, email, name, department, role, is_active, password_hash,
+                  created_at, updated_at, last_login_at
            FROM users
            WHERE email = $1""",
         email,
@@ -592,8 +568,8 @@ async def get_user_by_id(user_id: str) -> dict | None:
     """Retorna usuário pelo ID (sem password_hash)."""
     pool = await get_pool()
     row = await pool.fetchrow(
-        """SELECT id, username, email, full_name,
-                  is_active, is_admin, created_at, updated_at, last_login_at
+        """SELECT id, email, name, department, role, is_active,
+                  created_at, updated_at, last_login_at
            FROM users
            WHERE id = $1::uuid""",
         user_id,
@@ -625,8 +601,8 @@ async def update_user_last_login(user_id: str) -> bool:
 
 
 async def update_user(user_id: str, email: str | None = None, 
-                      full_name: str | None = None, password_hash: str | None = None,
-                      is_active: bool | None = None, is_admin: bool | None = None) -> bool:
+                      name: str | None = None, password_hash: str | None = None,
+                      is_active: bool | None = None, role: str | None = None) -> bool:
     """Atualiza dados do usuário."""
     pool = await get_pool()
     
@@ -640,9 +616,9 @@ async def update_user(user_id: str, email: str | None = None,
         params.append(email)
         param_count += 1
     
-    if full_name is not None:
-        updates.append(f"full_name = ${param_count}")
-        params.append(full_name)
+    if name is not None:
+        updates.append(f"name = ${param_count}")
+        params.append(name)
         param_count += 1
     
     if password_hash is not None:
@@ -655,9 +631,9 @@ async def update_user(user_id: str, email: str | None = None,
         params.append(is_active)
         param_count += 1
     
-    if is_admin is not None:
-        updates.append(f"is_admin = ${param_count}")
-        params.append(is_admin)
+    if role is not None:
+        updates.append(f"role = ${param_count}")
+        params.append(role)
         param_count += 1
     
     if not updates:
@@ -676,8 +652,8 @@ async def list_users(skip: int = 0, limit: int = 100) -> list[dict]:
     """Lista usuários (sem password_hash)."""
     pool = await get_pool()
     rows = await pool.fetch(
-        """SELECT id, username, email, full_name,
-                  is_active, is_admin, created_at, updated_at, last_login_at
+        """SELECT id, email, name, department, role, is_active,
+                  created_at, updated_at, last_login_at
            FROM users
            ORDER BY created_at DESC
            LIMIT $1 OFFSET $2""",

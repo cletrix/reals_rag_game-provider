@@ -6,10 +6,50 @@ Este guia explica como configurar e usar o sistema de autenticação do RAG Game
 
 O sistema de autenticação inclui:
 - Tabela `users` no PostgreSQL com login/senha
-- Hash de senhas usando bcrypt
+- Hash de senhas usando bcrypt (implementação direta, sem passlib)
 - Tokens JWT para autenticação
 - Endpoints REST para registro, login e gestão de usuários
 - Usuários padrão criados automaticamente
+- Login usando email como identificador
+
+## Histórico de Mudanças
+
+### 2026-05-25 - Correção do Problema Bcrypt/Passlib
+
+**Problema Identificado:**
+- A biblioteca `passlib` tinha incompatibilidade com a versão do `bcrypt` instalada
+- Hashes bcrypt na migration estavam malformados (checksum com tamanho incorreto)
+- Login falhava com erro: `ValueError: malformed bcrypt hash (checksum must be exactly 31 chars)`
+
+**Solução Aplicada:**
+1. **Substituição de passlib por bcrypt direto** em `web/auth.py`:
+   - Removido `passlib.context.CryptContext`
+   - Implementado `bcrypt.checkpw()` para verificação
+   - Implementado `bcrypt.hashpw()` para hashing
+   - `get_password_hash()` agora usa `bcrypt.gensalt()` e `bcrypt.hashpw()`
+   - `verify_password()` agora usa `bcrypt.checkpw()`
+
+2. **Geração de hashes corretos** na migration `004_add_password_hash.sql`:
+   - `admin123`: `$2b$12$I3Nq0VMRGtwaFmEfXbYqOexlaguVHj06pzsVng0S/jYw1Fif3raru`
+   - `dev123`: `$2b$12$OWX8gkFw/VeDaSze4zB5UudCo7NmcrQFHPU7bkfCcdlRe4m/xumd2`
+
+3. **Atualização de testes unitários**:
+   - 20 testes implementados cobrindo todo o sistema de autenticação
+   - Testes de hashing/verification com bcrypt direto
+   - Testes de endpoints de autenticação
+   - Testes de gestão de usuários
+   - Testes de página de login
+   - Todos os testes passando (20/20)
+
+**Comando para rodar testes:**
+```bash
+make test-auth
+```
+
+**Resultado:**
+- Login funcional com `admin@empresa.com` / `admin123`
+- Todos os testes unitários passando
+- Sistema de autenticação estável e testado
 
 ## Configuração
 
@@ -36,27 +76,49 @@ As dependências já estão incluídas em `web/requirements.txt`:
 
 ### 3. Migration Automática
 
-A migration `003_add_users.sql` é executada automaticamente quando o PostgreSQL inicia. Ela cria:
-- Tabela `users` com todos os campos necessários
-- Índices para performance
-- Trigger para atualizar `updated_at`
-- Usuários padrão (admin e user)
+A migration `004_add_password_hash.sql` é executada automaticamente quando o PostgreSQL inicia. Ela:
+- Adiciona coluna `password_hash` à tabela `users` existente
+- Adiciona índices para performance
+- Configura senhas para usuários existentes
+
+A tabela `users` é criada pelo script `schema-auditoria-enterprise.sql` com a seguinte estrutura:
+- `id` (UUID) - Chave primária
+- `email` (VARCHAR) - Email único (usado para login)
+- `name` (VARCHAR) - Nome completo
+- `department` (VARCHAR) - Departamento
+- `role` (VARCHAR) - Role (admin, user, viewer)
+- `is_active` (BOOLEAN) - Status da conta
+- `created_at` (TIMESTAMPTZ) - Data de criação
+- `updated_at` (TIMESTAMPTZ) - Data de atualização
+- `last_login_at` (TIMESTAMPTZ) - Último login
+- `password_hash` (VARCHAR) - Hash bcrypt da senha (adicionado pela migration)
 
 ## Usuários Padrão
 
-Dois usuários são criados automaticamente:
+Usuários são criados automaticamente pelo script `schema-auditoria-enterprise.sql` e recebem senhas via migration:
 
 ### Admin
-- **Username**: `admin`
-- **Email**: `admin@rag.local`
+- **Email**: `admin@empresa.com`
 - **Password**: `admin123`
-- **Role**: Administrador
+- **Role**: admin
+- **Department**: TI
 
-### User
-- **Username**: `user`
-- **Email**: `user@rag.local`
-- **Password**: `user123`
-- **Role**: Usuário comum
+### Desenvolvedores
+- **Email**: `dev1@empresa.com` / `dev2@empresa.com`
+- **Password**: `dev123`
+- **Role**: user
+- **Department**: Game Development
+
+### Outros Usuários
+- **Email**: `bets1@empresa.com`
+- **Password**: `dev123`
+- **Role**: user
+- **Department**: Bets
+
+- **Email**: `rh1@empresa.com`
+- **Password**: `dev123`
+- **Role**: user
+- **Department**: RH
 
 ⚠️ **IMPORTANTE**: Altere essas senhas em produção!
 
@@ -69,10 +131,11 @@ POST /api/auth/register
 Content-Type: application/json
 
 {
-  "username": "joao",
   "email": "joao@example.com",
   "password": "senha123",
-  "full_name": "João Silva"
+  "name": "João Silva",
+  "department": "IT",
+  "role": "user"
 }
 ```
 
@@ -80,11 +143,11 @@ Content-Type: application/json
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
-  "username": "joao",
   "email": "joao@example.com",
-  "full_name": "João Silva",
+  "name": "João Silva",
+  "department": "IT",
+  "role": "user",
   "is_active": true,
-  "is_admin": false,
   "created_at": "2026-05-25T18:00:00+00:00",
   "updated_at": "2026-05-25T18:00:00+00:00",
   "last_login_at": null
@@ -98,12 +161,12 @@ POST /api/auth/login
 Content-Type: application/json
 
 {
-  "username": "joao",
+  "username": "joao@example.com",
   "password": "senha123"
 }
 ```
 
-**Nota**: O campo `username` aceita tanto username quanto email.
+**Nota**: O campo `username` deve conter o email do usuário.
 
 **Resposta**:
 ```json
@@ -112,11 +175,11 @@ Content-Type: application/json
   "token_type": "bearer",
   "user": {
     "id": "550e8400-e29b-41d4-a716-446655440000",
-    "username": "joao",
     "email": "joao@example.com",
-    "full_name": "João Silva",
+    "name": "João Silva",
+    "department": "IT",
+    "role": "user",
     "is_active": true,
-    "is_admin": false,
     "created_at": "2026-05-25T18:00:00+00:00",
     "updated_at": "2026-05-25T18:00:00+00:00",
     "last_login_at": "2026-05-25T19:30:00+00:00"
@@ -145,11 +208,11 @@ Authorization: Bearer <access_token>
 [
   {
     "id": "550e8400-e29b-41d4-a716-446655440000",
-    "username": "admin",
-    "email": "admin@rag.local",
-    "full_name": "Administrator",
+    "email": "admin@empresa.com",
+    "name": "Administrador",
+    "department": "TI",
+    "role": "admin",
     "is_active": true,
-    "is_admin": true,
     "created_at": "2026-05-25T18:00:00+00:00",
     "updated_at": "2026-05-25T18:00:00+00:00",
     "last_login_at": "2026-05-25T19:30:00+00:00"
@@ -173,10 +236,10 @@ Content-Type: application/json
 
 {
   "email": "novoemail@example.com",
-  "full_name": "João Silva Jr.",
+  "name": "João Silva Jr.",
   "password": "nova_senha123",
   "is_active": true,
-  "is_admin": false
+  "role": "user"
 }
 ```
 
@@ -187,24 +250,25 @@ Todos os campos são opcionais. Apenas os campos fornecidos serão atualizados.
 ### Registrar novo usuário
 
 ```bash
-curl -X POST http://localhost:2468/api/auth/register \
+curl -X POST http://localhost:8000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "maria",
     "email": "maria@example.com",
     "password": "senha123",
-    "full_name": "Maria Santos"
+    "name": "Maria Santos",
+    "department": "IT",
+    "role": "user"
   }'
 ```
 
 ### Fazer login
 
 ```bash
-curl -X POST http://localhost:2468/api/auth/login \
+curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "maria",
-    "password": "senha123"
+    "username": "admin@empresa.com",
+    "password": "admin123"
   }'
 ```
 
@@ -212,13 +276,13 @@ curl -X POST http://localhost:2468/api/auth/login \
 
 ```bash
 # Primeiro, faça login e salve o token
-TOKEN=$(curl -s -X POST http://localhost:2468/api/auth/login \
+TOKEN=$(curl -s -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}' \
+  -d '{"username":"admin@empresa.com","password":"admin123"}' \
   | jq -r '.access_token')
 
 # Use o token
-curl -X GET http://localhost:2468/api/auth/me \
+curl -X GET http://localhost:8000/api/auth/me \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -227,12 +291,12 @@ curl -X GET http://localhost:2468/api/auth/me \
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
 | id | UUID | Chave primária |
-| username | VARCHAR(50) | Nome de usuário único |
-| email | VARCHAR(255) | Email único |
-| password_hash | VARCHAR(255) | Hash bcrypt da senha |
-| full_name | VARCHAR(255) | Nome completo |
+| email | VARCHAR(255) | Email único (usado para login) |
+| name | VARCHAR(255) | Nome completo |
+| department | VARCHAR(100) | Departamento |
+| role | VARCHAR(50) | Role (admin, user, viewer) |
 | is_active | BOOLEAN | Se a conta está ativa |
-| is_admin | BOOLEAN | Se é administrador |
+| password_hash | VARCHAR(255) | Hash bcrypt da senha |
 | created_at | TIMESTAMPTZ | Data de criação |
 | updated_at | TIMESTAMPTZ | Data de atualização |
 | last_login_at | TIMESTAMPTZ | Último login |
@@ -249,14 +313,14 @@ docker exec -it landf_postgres psql -U rag ragdb
 
 ```sql
 -- Alterar senha do admin
-UPDATE users 
-SET password_hash = '$2b$12$...' 
-WHERE username = 'admin';
+UPDATE users
+SET password_hash = '$2b$12$...'
+WHERE email = 'admin@empresa.com';
 
--- Alterar senha do user
-UPDATE users 
-SET password_hash = '$2b$12$...' 
-WHERE username = 'user';
+-- Alterar senha de outros usuários
+UPDATE users
+SET password_hash = '$2b$12$...'
+WHERE email = 'dev1@empresa.com';
 ```
 
 Para gerar um novo hash bcrypt:
