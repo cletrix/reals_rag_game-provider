@@ -14,7 +14,7 @@ reals_rag_game-provider/
 │   ├── main.py           (1024 linhas) ❌ Muito grande
 │   ├── db.py             (22KB)        ❌ Muitas responsabilidades
 │   ├── schemas.py        (19KB)        ⚠️  Pode ser dividido
-│   ├── auth.py           (1.5KB)       ✅ OK
+│   ├── auth.py           (1.5KB)       ✅ OK - Implementado com bcrypt direto
 │   ├── indexer.py        (10KB)        ✅ OK
 │   ├── folder_scanner.py (4KB)         ✅ OK
 │   └── templates/
@@ -22,9 +22,97 @@ reals_rag_game-provider/
 ├── rag/                    # Módulos RAG
 ├── db/                     # Scripts SQL
 ├── migrations/             # Migrations
+│   └── 004_add_password_hash.sql  ✅ Nova migration para autenticação
 ├── tests/                  # Testes
-└── scripts/                # Scripts utilitários
+│   ├── test_auth.py       ✅ 20 testes de autenticação
+│   └── test_create_user.py ✅ 3 testes de criação de usuário
+├── scripts/                # Scripts utilitários
+│   └── create_user.py     ✅ Script para criar usuários
+├── docs/                   # Documentação
+│   ├── auth-setup.md      ✅ Documentação de autenticação
+│   └── arquitetura-analise.md  ✅ Este documento
+└── Makefile                ✅ Novos targets: test-auth, create-user
 ```
+
+## Implementações Recentes (2026-05-25)
+
+### Sistema de Autenticação ✅
+
+**Implementado:**
+- Autenticação com email como identificador (removido username)
+- Hash de senhas com bcrypt direto (removido passlib por incompatibilidade)
+- Tokens JWT para autenticação de sessão
+- Endpoints REST: `/api/auth/register`, `/api/auth/login`, `/api/auth/me`
+- Gestão de usuários: `/api/users/*`
+- Página de login: `/login`
+- Migration `004_add_password_hash.sql` com hashes corretos
+
+**Correções:**
+- Substituição de passlib por bcrypt direto em `web/auth.py`
+- Geração de hashes bcrypt corretos na migration
+- Atualização de schemas para usar email, name, department, role
+
+**Testes:**
+- 20 testes unitários em `test_auth.py` (todos passando)
+- 3 testes em `test_create_user.py` (todos passando)
+- Total: 23 testes de autenticação
+
+**Documentação:**
+- `docs/auth-setup.md` - Guia completo de autenticação
+- `README.md` - Atualizado com informações de autenticação
+- Apresentação HTML - Slide de autenticação adicionado
+
+**Scripts:**
+- `scripts/create_user.py` - Criação interativa de usuários
+- Makefile target: `make create-user`
+- Makefile target: `make test-auth`
+
+**Credenciais de teste:**
+- admin@empresa.com / admin123
+- dev1@empresa.com / dev123
+- dev2@empresa.com / dev123
+- bets1@empresa.com / dev123
+- rh1@empresa.com / dev123
+- leandro@empresa.com / academia (criado via script)
+
+## Trabalho Realizado e Decisões
+
+### Implementação do Sistema de Autenticação
+
+**Problema Inicial:**
+- Login não funcionava com erro: `ValueError: malformed bcrypt hash (checksum must be exactly 31 chars)`
+- Passlib tinha incompatibilidade com a versão do bcrypt instalada
+- Hashes na migration estavam malformados
+
+**Decisões Tomadas:**
+1. **Substituir passlib por bcrypt direto** - Mais estável e sem dependências problemáticas
+2. **Gerar hashes corretos** - Usar bcrypt.gensalt() e bcrypt.hashpw() diretamente
+3. **Email como identificador** - Remover username, usar email como login
+4. **Atualizar schemas** - Usar email, name, department, role em vez de username, full_name, is_admin
+5. **Testes abrangentes** - 20 testes cobrindo todo o fluxo de autenticação
+6. **Script de criação de usuários** - Facilitar gestão de usuários via CLI
+7. **Documentação completa** - Guia detalhado em docs/auth-setup.md
+
+**Arquivos Modificados:**
+- `web/auth.py` - Substituição de passlib por bcrypt direto
+- `web/schemas.py` - Atualização para nova estrutura de usuários
+- `web/db.py` - Adição de funções de gestão de usuários
+- `web/main.py` - Implementação de endpoints de autenticação
+- `migrations/004_add_password_hash.sql` - Migration com hashes corretos
+- `tests/test_auth.py` - 20 testes de autenticação
+- `tests/test_create_user.py` - 3 testes de criação de usuário
+- `scripts/create_user.py` - Script para criar usuários
+- `docs/auth-setup.md` - Documentação completa
+- `README.md` - Atualização com informações de autenticação
+- `Makefile` - Novos targets: test-auth, create-user
+- `docker-compose.yml` - Montagem de diretórios de testes e scripts
+
+**Resultado:**
+- ✅ Login funcional
+- ✅ 23 testes passando
+- ✅ Documentação completa
+- ✅ Script de criação de usuários funcionando
+- ✅ Sistema estável e testado
 
 ## Problemas Identificados
 
@@ -209,3 +297,17 @@ web/
 **Prioridade:** Alta - Refatoração deve ser feita para facilitar manutenção futura.
 
 **Tempo estimado:** 2-3 dias para refatoração completa com testes.
+
+## Status Atual
+
+**Sistema de Autenticação:** ✅ Completo e funcional
+- Login funcionando
+- 23 testes passando
+- Documentação completa
+- Script de criação de usuários
+- Sistema estável e testado
+
+**Próximos Passos:**
+1. Avaliar necessidade de refatoração de main.py, db.py, schemas.py
+2. Implementar refatoração se necessário
+3. Continuar desenvolvimento de features do RAG
