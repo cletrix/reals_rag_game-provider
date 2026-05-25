@@ -51,6 +51,109 @@ make test-auth
 - Todos os testes unitários passando
 - Sistema de autenticação estável e testado
 
+## Criar Usuários
+
+Existem 3 formas de criar usuários no sistema:
+
+### 1. Script Interativo (Recomendado)
+
+O script `scripts/create_user.py` permite criar usuários de forma interativa via linha de comando.
+
+**Uso:**
+```bash
+make create-user
+```
+
+Ou diretamente:
+```bash
+docker compose run --rm web python /app/scripts/create_user.py
+```
+
+**O script solicitará:**
+- Email
+- Senha (com confirmação)
+- Nome completo
+- Departamento
+- Role (admin/user)
+
+**Validações:**
+- Email não pode estar vazio
+- Senha não pode estar vazia
+- Senhas devem conferir
+- Nome não pode estar vazio
+- Departamento não pode estar vazio
+- Role deve ser 'admin' ou 'user'
+- Email não pode estar duplicado
+
+**Exemplo de execução:**
+```
+============================================================
+Criar Usuário no Banco de Dados
+============================================================
+
+Email: leandro@empresa.com
+Senha: ******
+Confirme a senha: ******
+Nome completo: Leandro Batista
+Departamento: TI
+Role [admin/user] (padrão: user): admin
+
+Resumo:
+  Email: leandro@empresa.com
+  Nome: Leandro Batista
+  Departamento: TI
+  Role: admin
+
+Confirmar criação? (s/n): s
+
+✅ Usuário criado com sucesso!
+   Email: leandro@empresa.com
+   Nome: Leandro Batista
+   Departamento: TI
+   Role: admin
+   ID: 7df8dace-0bb2-40c5-95a6-8930c8a7855a
+
+Você pode fazer login com:
+  Email: leandro@empresa.com
+  Senha: academia
+```
+
+### 2. Via API REST
+
+**Endpoint:** `POST /api/auth/register`
+
+**Exemplo:**
+```bash
+curl -X POST http://localhost:2468/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "novo@empresa.com",
+    "password": "senha123",
+    "name": "Novo Usuário",
+    "department": "TI",
+    "role": "user"
+  }'
+```
+
+### 3. Via SQL Direto (DBeaver)
+
+```sql
+INSERT INTO users (id, email, password_hash, name, department, role, is_active, created_at, updated_at)
+VALUES (
+  gen_random_uuid(),
+  'novo@empresa.com',
+  '$2b$12$I3Nq0VMRGtwaFmEfXbYqOexlaguVHj06pzsVng0S/jYw1Fif3raru',
+  'Novo Usuário',
+  'TI',
+  'user',
+  true,
+  NOW(),
+  NOW()
+);
+```
+
+**Nota:** Para gerar hashes bcrypt válidos, use o script `create_user.py` ou a função `get_password_hash()` do módulo `auth`.
+
 ## Configuração
 
 ### 1. Variáveis de Ambiente

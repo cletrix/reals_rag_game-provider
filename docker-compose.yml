@@ -69,6 +69,7 @@ services:
       - ./web:/app
       - ./data:/app/data
       - ./tests:/app/tests
+      - ./scripts:/app/scripts
     ports:
       - "2468:8000"
     depends_on:
