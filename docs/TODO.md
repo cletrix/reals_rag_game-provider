@@ -7,6 +7,18 @@
 
 ---
 
+## 🚨 Próximas Prioridades (Sprint Atual)
+
+| # | Tarefa | Impacto | Status |
+|---|--------|---------|--------|
+| 1 | Refatorar `main.py` em `web/routers/` por domínio | Alto — 1000 linhas, 37 endpoints, inviabiliza testes | 🔴 Pendente |
+| 2 | Adicionar testes unitários (pytest) | Alto — zero cobertura atual | 🔴 Pendente |
+| 3 | CI/CD com GitHub Actions | Médio — deploy manual atualmente | 🔴 Pendente |
+| 4 | Autenticação obrigatória nos endpoints | Alto — endpoints sem proteção JWT | 🔴 Pendente |
+| 5 | Configuração por ambiente (`.env.dev` / `.env.prod`) | Médio — único `.env` para tudo | 🔴 Pendente |
+
+---
+
 ## Falhas Críticas e Melhorias Necessárias
 
 **Status Atual:** ✅ Funcional, mas ❌ Ainda não Enterprise-ready
