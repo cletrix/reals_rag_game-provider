@@ -19,7 +19,7 @@ def configure(
     groq_key = os.getenv("GROQ_API_KEY")
 
     if llm_provider is None:
-        llm_provider = "groq" if groq_key else "ollama"
+        llm_provider = "groq" if groq_key and groq_key.strip() else "ollama"
 
     if llm_provider == "groq":
         from llama_index.llms.groq import Groq
