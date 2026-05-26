@@ -647,6 +647,21 @@
         newFolderName: '',
         newFolderAutoIndex: false,
 
+        authFetch(url, options = {}) {
+          const token = localStorage.getItem('auth_token');
+          const headers = { ...(options.headers || {}) };
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+          return fetch(url, { ...options, headers }).then(r => {
+            if (r.status === 401) {
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('user_data');
+              window.location.href = '/login';
+              throw new Error('Não autorizado');
+            }
+            return r;
+          });
+        },
+
         async init() {
           // Check authentication
           const token = localStorage.getItem('auth_token');
@@ -656,7 +671,7 @@
           }
 
           await Promise.all([this.loadConversations(), this.loadStats()]);
-          const s = await fetch('/api/settings').then(r => r.json());
+          const s = await this.authFetch('/api/settings').then(r => r.json());
           this.currentProvider = s.llm_provider || 'groq';
           // polling leve de status de indexação (a cada 3s enquanto em background)
           setInterval(() => this._pollIndexStatus(), 3000);
@@ -664,17 +679,17 @@
 
         async loadHistory() {
           // Mantido para compatibilidade
-          const rows = await fetch('/api/history').then(r => r.json());
+          const rows = await this.authFetch('/api/history').then(r => r.json());
           this.history = rows;
         },
 
         async loadConversations() {
-          const conversations = await fetch('/api/conversations').then(r => r.json());
+          const conversations = await this.authFetch('/api/conversations').then(r => r.json());
           this.conversations = conversations;
         },
 
         async loadStats() {
-          const s = await fetch('/api/stats').then(r => r.json());
+          const s = await this.authFetch('/api/stats').then(r => r.json());
           this.stats = s;
           const q = Number(s.total_queries).toLocaleString('pt-BR');
           const t = Number(s.total_tokens).toLocaleString('pt-BR');
@@ -693,7 +708,7 @@
           this.currentConversationId = id;
           this.activeQueryId = null;  // Reset query individual
           
-          const messages = await fetch(`/api/conversations/${id}/messages`).then(r => r.json());
+          const messages = await this.authFetch(`/api/conversations/${id}/messages`).then(r => r.json());
           
           // Converte mensagens do formato DB para o formato do frontend
           this.messages = [];
@@ -726,7 +741,7 @@
         async loadQuery(id) {
           // Mantido para compatibilidade - carrega query individual
           this.activeQueryId = id;
-          const q = await fetch(`/api/query/${id}`).then(r => r.json());
+          const q = await this.authFetch(`/api/query/${id}`).then(r => r.json());
           this.messages = [
             {
               id: 'u-' + id,
@@ -778,7 +793,7 @@
           this.$nextTick(() => this.scrollToBottom());
 
           try {
-            const resp = await fetch('/chat/stream', {
+            const resp = await this.authFetch('/chat/stream', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
@@ -832,7 +847,7 @@
             }
 
             // finaliza resposta
-            const settings = await fetch('/api/settings').then(r => r.json());
+            const settings = await this.authFetch('/api/settings').then(r => r.json());
             const modelKey = settings.llm_provider === 'groq' ? 'groq_model' : 'ollama_model';
             this.messages.push({
               id: queryId || Date.now(),
@@ -872,7 +887,7 @@
         },
 
         async openSettings() {
-          const s = await fetch('/api/settings').then(r => r.json());
+          const s = await this.authFetch('/api/settings').then(r => r.json());
           this.localSettings = { ...s };
           await this.loadStats();
           this.settingsOpen = true;
@@ -883,7 +898,7 @@
         },
 
         async saveSettings() {
-          await fetch('/api/settings', {
+          await this.authFetch('/api/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(this.localSettings),
@@ -905,13 +920,13 @@
         },
 
         async loadFolders() {
-          this.folders = await fetch('/api/folders').then(r => r.json());
+          this.folders = await this.authFetch('/api/folders').then(r => r.json());
         },
 
         async createFolder() {
           if (!this.newFolderName.trim()) return;
           try {
-            const response = await fetch('/api/folders', {
+            const response = await this.authFetch('/api/folders', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -936,7 +951,7 @@
 
         async selectFolder(folder) {
           this.selectedFolder = folder;
-          const docs = await fetch(`/api/folders/${folder.id}/documents`).then(r => r.json());
+          const docs = await this.authFetch(`/api/folders/${folder.id}/documents`).then(r => r.json());
           this.docFiles = docs.map(d => ({
             name: d.name,
             path: d.path,
@@ -946,7 +961,7 @@
         },
 
         async loadDocFiles() {
-          this.docFiles = await fetch('/api/files').then(r => r.json());
+          this.docFiles = await this.authFetch('/api/files').then(r => r.json());
         },
 
         async handleDrop(event) {
@@ -967,7 +982,7 @@
           files.forEach(f => form.append('files', f));
           this.uploadStatus = null;
           try {
-            const r = await fetch('/api/files/upload', { method: 'POST', body: form });
+            const r = await this.authFetch('/api/files/upload', { method: 'POST', body: form });
             const data = await r.json();
             if (data.saved && data.saved.length > 0) {
               this.uploadStatus = { ok: true, message: `${data.saved.length} arquivo(s) enviado(s): ${data.saved.join(', ')}` };
@@ -982,7 +997,7 @@
         },
 
         async startIndexing() {
-          const r = await fetch('/api/index', { method: 'POST' });
+          const r = await this.authFetch('/api/index', { method: 'POST' });
           const data = await r.json();
           if (data.ok) {
             this.showIndexDone = false;
@@ -992,7 +1007,7 @@
 
         async _pollIndexStatus() {
           try {
-            const s = await fetch('/api/index/status').then(r => r.json());
+            const s = await this.authFetch('/api/index/status').then(r => r.json());
             const wasRunning = this.indexStatus.running;
             this.indexStatus = s;
             if (wasRunning && !s.running && s.status === 'done') {
@@ -1006,7 +1021,7 @@
         async toggleFile(f) {
           this.togglingFile = f.name;
           try {
-            const r = await fetch(`/api/files/${encodeURIComponent(f.name)}/toggle`, { method: 'POST' });
+            const r = await this.authFetch(`/api/files/${encodeURIComponent(f.name)}/toggle`, { method: 'POST' });
             if (r.ok) await this.loadDocFiles();
           } catch (e) {
             console.error('Erro ao alternar arquivo:', e);
@@ -1025,7 +1040,7 @@
         async deleteFile(f) {
           this.deletingFile = f.name;
           try {
-            const r = await fetch(`/api/files/${encodeURIComponent(f.name)}`, { method: 'DELETE' });
+            const r = await this.authFetch(`/api/files/${encodeURIComponent(f.name)}`, { method: 'DELETE' });
             if (r.ok) await this.loadDocFiles();
           } catch (e) {
             console.error('Erro ao deletar arquivo:', e);

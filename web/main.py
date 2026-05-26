@@ -199,7 +199,7 @@ async def index(request: Request):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/history", response_model=List[QueryResponse], tags=["History"])
-async def api_history():
+async def api_history(current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna histórico de queries.
 
@@ -217,7 +217,7 @@ async def api_history():
 
 
 @app.get("/api/query/{query_id}", response_model=QueryDetail, tags=["History"])
-async def api_query_detail(query_id: str):
+async def api_query_detail(query_id: str, current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna detalhes completos de uma query específica.
 
@@ -240,7 +240,7 @@ async def api_query_detail(query_id: str):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/conversations", response_model=List[ConversationResponse], tags=["Conversations"])
-async def api_get_conversations():
+async def api_get_conversations(current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna lista de conversas com contagem de mensagens e preview.
 
@@ -251,7 +251,7 @@ async def api_get_conversations():
 
 
 @app.post("/api/conversations", response_model=ConversationDetail, tags=["Conversations"])
-async def api_create_conversation(payload: ConversationUpdate):
+async def api_create_conversation(payload: ConversationUpdate, current_user: dict = Depends(auth.get_current_user)):
     """
     Cria uma nova conversa.
 
@@ -262,7 +262,7 @@ async def api_create_conversation(payload: ConversationUpdate):
 
 
 @app.get("/api/conversations/{conversation_id}", response_model=ConversationDetail, tags=["Conversations"])
-async def api_get_conversation(conversation_id: str):
+async def api_get_conversation(conversation_id: str, current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna dados de uma conversa específica.
 
@@ -275,7 +275,7 @@ async def api_get_conversation(conversation_id: str):
 
 
 @app.get("/api/conversations/{conversation_id}/messages", response_model=List[MessageResponse], tags=["Conversations"])
-async def api_get_conversation_messages(conversation_id: str):
+async def api_get_conversation_messages(conversation_id: str, current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna todas as mensagens de uma conversa.
 
@@ -293,7 +293,7 @@ async def api_get_conversation_messages(conversation_id: str):
 
 
 @app.patch("/api/conversations/{conversation_id}", tags=["Conversations"])
-async def api_update_conversation(conversation_id: str, payload: ConversationUpdate):
+async def api_update_conversation(conversation_id: str, payload: ConversationUpdate, current_user: dict = Depends(auth.get_current_user)):
     """
     Atualiza dados de uma conversa (título).
 
@@ -309,7 +309,7 @@ async def api_update_conversation(conversation_id: str, payload: ConversationUpd
 # ---------------------------------------------------------------------------
 
 @app.get("/api/settings", response_model=SettingsResponse, tags=["Settings"])
-async def api_get_settings():
+async def api_get_settings(current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna todas as configurações do sistema.
     """
@@ -317,7 +317,7 @@ async def api_get_settings():
 
 
 @app.post("/api/settings", tags=["Settings"])
-async def api_update_settings(payload: SettingsUpdate):
+async def api_update_settings(payload: SettingsUpdate, current_user: dict = Depends(auth.get_current_user)):
     """
     Atualiza configurações do sistema.
 
@@ -333,7 +333,7 @@ async def api_update_settings(payload: SettingsUpdate):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/stats", response_model=StatsResponse, tags=["Stats"])
-async def api_stats():
+async def api_stats(current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna estatísticas do sistema.
 
@@ -371,7 +371,7 @@ async def _fetch_groq_usage() -> dict | None:
 # ---------------------------------------------------------------------------
 
 @app.post("/chat/stream", tags=["Chat"])
-async def chat_stream(request: Request):
+async def chat_stream(request: Request, current_user: dict = Depends(auth.get_current_user)):
     """
     Endpoint de chat streaming com Server-Sent Events (SSE).
 
@@ -495,7 +495,7 @@ def _extract_tokens(response) -> int | None:
 # ---------------------------------------------------------------------------
 
 @app.get("/api/files", tags=["Documents"])
-async def api_files():
+async def api_files(current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna lista de arquivos indexados.
     """
@@ -505,7 +505,7 @@ async def api_files():
 
 
 @app.post("/api/files/upload", tags=["Documents"])
-async def api_upload(files: list[UploadFile] = File(...)):
+async def api_upload(files: list[UploadFile] = File(...), current_user: dict = Depends(auth.get_current_user)):
     """
     Faz upload de arquivos para indexação.
 
@@ -525,7 +525,7 @@ async def api_upload(files: list[UploadFile] = File(...)):
 
 
 @app.post("/api/files/{filename}/toggle", tags=["Documents"])
-async def api_toggle_file(filename: str):
+async def api_toggle_file(filename: str, current_user: dict = Depends(auth.get_current_user)):
     try:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, indexer.toggle_file, filename)
@@ -535,7 +535,7 @@ async def api_toggle_file(filename: str):
 
 
 @app.delete("/api/files/{filename}", tags=["Documents"])
-async def api_delete_file(filename: str):
+async def api_delete_file(filename: str, current_user: dict = Depends(auth.get_current_user)):
     try:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, indexer.delete_file, filename)
@@ -545,7 +545,7 @@ async def api_delete_file(filename: str):
 
 
 @app.post("/api/index", tags=["Documents"])
-async def api_index():
+async def api_index(current_user: dict = Depends(auth.get_current_user)):
     """
     Inicia indexação de documentos.
 
@@ -558,7 +558,7 @@ async def api_index():
 
 
 @app.get("/api/index/status", tags=["Documents"])
-async def api_index_status():
+async def api_index_status(current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna status atual da indexação.
     """
@@ -570,7 +570,7 @@ async def api_index_status():
 # ---------------------------------------------------------------------------
 
 @app.get("/api/folders", response_model=List[FolderResponse], tags=["Folders"])
-async def api_get_folders():
+async def api_get_folders(current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna lista de pastas ordenadas por atualização mais recente.
     """
@@ -579,7 +579,7 @@ async def api_get_folders():
 
 
 @app.post("/api/folders", response_model=FolderResponse, tags=["Folders"])
-async def api_create_folder(request: Request):
+async def api_create_folder(payload: FolderCreate, current_user: dict = Depends(auth.get_current_user)):
     """
     Cria uma nova pasta.
 
@@ -587,12 +587,6 @@ async def api_create_folder(request: Request):
     - **path**: Caminho do filesystem
     - **auto_index**: Habilitar indexação automática (opcional)
     """
-    body = await request.json()
-    try:
-        payload = FolderCreate(**body)
-    except Exception:
-        return JSONResponse(status_code=422, content={"error": "ValidationError", "message": "Dados inválidos"})
-
     folder_id = await create_folder(
         name=payload.name,
         path=payload.path,
@@ -603,7 +597,7 @@ async def api_create_folder(request: Request):
 
 
 @app.get("/api/folders/{folder_id}", response_model=FolderResponse, tags=["Folders"])
-async def api_get_folder(folder_id: str):
+async def api_get_folder(folder_id: str, current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna dados de uma pasta específica.
 
@@ -616,18 +610,12 @@ async def api_get_folder(folder_id: str):
 
 
 @app.patch("/api/folders/{folder_id}", tags=["Folders"])
-async def api_update_folder(folder_id: str, request: Request):
+async def api_update_folder(folder_id: str, payload: FolderUpdate, current_user: dict = Depends(auth.get_current_user)):
     """
     Atualiza dados de uma pasta (nome ou auto_index).
 
     - **folder_id**: ID da pasta
     """
-    body = await request.json()
-    try:
-        payload = FolderUpdate(**body)
-    except Exception:
-        return JSONResponse(status_code=422, content={"error": "ValidationError", "message": "Dados inválidos"})
-
     updated = await update_folder(
         folder_id=folder_id,
         name=payload.name,
@@ -639,7 +627,7 @@ async def api_update_folder(folder_id: str, request: Request):
 
 
 @app.delete("/api/folders/{folder_id}", tags=["Folders"])
-async def api_delete_folder(folder_id: str):
+async def api_delete_folder(folder_id: str, current_user: dict = Depends(auth.get_current_user)):
     """
     Deleta uma pasta (cascade deleta documentos).
 
@@ -652,7 +640,7 @@ async def api_delete_folder(folder_id: str):
 
 
 @app.get("/api/folders/{folder_id}/documents", response_model=List[DocumentResponse], tags=["Folders"])
-async def api_get_folder_documents(folder_id: str):
+async def api_get_folder_documents(folder_id: str, current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna todos os documentos de uma pasta.
 
@@ -667,7 +655,7 @@ async def api_get_folder_documents(folder_id: str):
 
 
 @app.post("/api/folders/upload", response_model=FolderUploadResponse, tags=["Folders"])
-async def api_upload_folder(files: list[UploadFile] = File(...), folder_name: str = None, auto_index: bool = False):
+async def api_upload_folder(files: list[UploadFile] = File(...), folder_name: str = None, auto_index: bool = False, current_user: dict = Depends(auth.get_current_user)):
     """
     Faz upload de múltiplos arquivos e cria uma pasta para organizá-los.
 
@@ -745,7 +733,7 @@ async def api_upload_folder(files: list[UploadFile] = File(...), folder_name: st
 
 
 @app.post("/api/folders/{folder_id}/index", tags=["Folders"])
-async def api_index_folder(folder_id: str):
+async def api_index_folder(folder_id: str, current_user: dict = Depends(auth.get_current_user)):
     """
     Inicia indexação de documentos de uma pasta específica.
 
@@ -762,7 +750,7 @@ async def api_index_folder(folder_id: str):
 
 
 @app.post("/api/folders/scanner/start", tags=["Folders"])
-async def api_start_scanner():
+async def api_start_scanner(current_user: dict = Depends(auth.get_current_user)):
     """
     Inicia o scanner de pastas para indexação automática.
     """
@@ -773,7 +761,7 @@ async def api_start_scanner():
 
 
 @app.post("/api/folders/scanner/stop", tags=["Folders"])
-async def api_stop_scanner():
+async def api_stop_scanner(current_user: dict = Depends(auth.get_current_user)):
     """
     Para o scanner de pastas.
     """
@@ -782,7 +770,7 @@ async def api_stop_scanner():
 
 
 @app.get("/api/folders/scanner/status", tags=["Folders"])
-async def api_scanner_status():
+async def api_scanner_status(current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna status do scanner de pastas.
     """
@@ -922,7 +910,7 @@ async def get_current_user_info(current_user: dict = Depends(auth.get_current_us
 # --- User Management Endpoints ---
 
 @app.get("/api/users", tags=["Users"])
-async def get_users(skip: int = 0, limit: int = 100):
+async def get_users(skip: int = 0, limit: int = 100, current_user: dict = Depends(auth.get_current_user)):
     """
     Lista todos os usuários.
 
@@ -933,7 +921,7 @@ async def get_users(skip: int = 0, limit: int = 100):
 
 
 @app.get("/api/users/{user_id}", tags=["Users"])
-async def get_user(user_id: str):
+async def get_user(user_id: str, current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna um usuário específico pelo ID.
 
@@ -946,7 +934,7 @@ async def get_user(user_id: str):
 
 
 @app.put("/api/users/{user_id}", tags=["Users"])
-async def update_user_endpoint(user_id: str, user_data: UserUpdate):
+async def update_user_endpoint(user_id: str, user_data: UserUpdate, current_user: dict = Depends(auth.get_current_user)):
     """
     Atualiza dados de um usuário.
 

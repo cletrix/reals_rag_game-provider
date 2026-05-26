@@ -14,7 +14,7 @@
 | 1 | Refatorar `main.py` em `web/routers/` por domínio | Alto — 1000 linhas, 37 endpoints, inviabiliza testes | 🔴 Pendente |
 | 2 | Adicionar testes unitários (pytest) | Alto — zero cobertura atual | 🔴 Pendente |
 | 3 | CI/CD com GitHub Actions | Médio — deploy manual atualmente | 🔴 Pendente |
-| 4 | Autenticação obrigatória nos endpoints | Alto — endpoints sem proteção JWT | 🔴 Pendente |
+| 4 | Autenticação obrigatória nos endpoints | Alto — endpoints sem proteção JWT | ✅ Concluído |
 | 5 | Configuração por ambiente (`.env.dev` / `.env.prod`) | Médio — único `.env` para tudo | 🔴 Pendente |
 
 ---
@@ -27,12 +27,13 @@
 
 > Ordenação por impacto real: Segurança → Estrutura de código → Qualidade → Operacional
 
-#### 🔴 P1. Falta de Autenticação e Autorização ⚠️
-> **Impacto:** Crítico — endpoints expostos sem proteção JWT obrigatória
+#### � P1. Autenticação e Autorização ✅
+> **Impacto:** Crítico — **RESOLVIDO**: JWT obrigatório em todos os endpoints `/api/*` e `/chat/stream`
 - [ ] Implementar OAuth2/LDAP
-- [x] Adicionar JWT tokens (infraestrutura criada, mas não obrigatória nas rotas)
+- [x] Adicionar JWT tokens
+- [x] Configurar `Depends(get_current_user)` obrigatório em todos os endpoints protegidos (30 rotas)
+- [x] Frontend envia `Authorization: Bearer` em todas as chamadas com redirecionamento automático 401
 - [ ] Implementar RBAC por departamento
-- [ ] Configurar middleware de autenticação obrigatório em todas as rotas
 
 #### 🔴 P2. Refatoração de Estrutura (main.py) ⚠️
 > **Impacto:** Alto — 1000 linhas, 37 endpoints num único arquivo, inviabiliza testes e manutenção
