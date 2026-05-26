@@ -99,7 +99,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: "postgresql://rag:rag@postgres:5432/ragdb"
-      RATE_LIMIT_REQUESTS: "100"
+      RATE_LIMIT_REQUESTS: "1000"
       RATE_LIMIT_WINDOW: "60"
       MAX_FOLDER_SIZE_MB: "100"
       FOLDER_SCAN_INTERVAL_SECONDS: "300"
