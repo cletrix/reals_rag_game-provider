@@ -252,41 +252,42 @@ Implementar WAL archiving para:
 
 ## Conclusão
 
-**Status Atual:**
-- Graceful shutdown implementado (stop_grace_period: 60s)
-- Backup automático configurado
-- Script de recuperação criado
-- Procedimentos documentados
-- PostgreSQL mudado de Alpine para imagem padrão (postgres:16)
-
-**Limitação Importante:**
-O graceful shutdown **não está funcionando** na versão do Docker Compose que você está usando. O Docker Compose não respeita o `stop_grace_period`, resultando em:
-- PostgreSQL sendo desligado abruptamente (SIGKILL em vez de SIGTERM)
-- WAL corrompendo consistentemente
-- Necessidade de usar `pg_resetwal` para recuperação
+**Status Atual: PROBLEMA RESOLVIDO ✅**
 
 **Causa Raiz:**
-A versão do Docker Compose que você está usando (que não suporta a flag `--rm`) provavelmente também não respeita o `stop_grace_period`. Isso foi confirmado pelos logs que mostram:
+O problema NÃO era o PostgreSQL em si, mas sim o uso de bind mount (`./postgres_data:/var/lib/postgresql/data`) em macOS/Docker Desktop. Bind mounts passam por virtualização e sincronização extra do filesystem, o que causava corrupção do WAL durante shutdowns.
+
+**Solução Implementada:**
+- ✅ Mudou de bind mount para named volume (`postgres_data:/var/lib/postgresql/data`)
+- ✅ Adicionou `init: true` ao PostgreSQL (propaga sinais corretamente)
+- ✅ Mudou `stop_signal` de SIGTERM para SIGINT (PostgreSQL responde melhor)
+- ✅ Aumentou `stop_grace_period` de 60s para 2m (mais tempo para shutdown)
+- ✅ Adicionou configurações PostgreSQL: `fsync=on`, `synchronous_commit=on`, `full_page_writes=on`, `wal_level=replica`, `max_wal_size=1GB`
+- ✅ Testado com 10 ciclos de shutdown/startup - todos funcionaram sem corrupção
+
+**Teste de Validação:**
+```bash
+for i in {1..10}; do
+  docker compose stop postgres
+  sleep 3
+  docker compose start postgres
+  sleep 5
+done
 ```
-database system shutdown was interrupted
-database system was not properly shut down
-```
+Resultado: Todos os 10 ciclos funcionaram sem corrupção. PostgreSQL iniciou corretamente com "database system was shut down" e "database system is ready to accept connections".
 
 **Para desenvolvimento:**
-- O `make fix-postgres` recupera o banco sem apagar dados
-- O `make create-user` cria usuários com argumentos de linha de comando
-- Aceitável usar `pg_resetwal` se necessário
-- Nunca apagar o volume `postgres_data`
-- **Testes unitários funcionam sem apagar o banco** - usam mocks e fixtures
+- Named volumes são muito mais estáveis que bind mounts
+- Usar `docker compose stop` em vez de `docker compose down` quando possível
+- Nunca usar `docker compose down -v` (remove volumes)
+- Backup dos dados antigos está em `backups/postgres_data_backup.tar.gz`
 
 **Para produção:**
-- **Nunca apagar dados em produção**
+- Named volumes são a prática recomendada
+- **Replicação em tempo real é essencial** (veja TODO.md) para alta disponibilidade
 - **Sempre ter backup recente automatizado**
-- **Replicação em tempo real é essencial** (veja TODO.md)
 - **Monitoramento contínuo da saúde do banco**
-- **Procedimentos de emergência documentados**
 - **Point-in-Time Recovery (PITR) para granularidade**
-- **Usar Docker Compose versão mais recente que suporte graceful shutdown corretamente**
 
 **Recomendação Crítica:**
 Para produção, implementar replicação master-slave (planejado em TODO.md) para garantir zero data loss e alta disponibilidade.
