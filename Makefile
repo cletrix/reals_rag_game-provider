@@ -1,4 +1,4 @@
-.PHONY: build rebuild index chat web web-bg run psql reset deploy deploy-full test test-cov test-docker test-auth create-user
+.PHONY: build rebuild index chat web web-bg run psql reset deploy deploy-full test test-cov test-docker test-auth create-user backup-db restore-db
 
 build:
 	ollama pull $$(grep EMBED_MODEL .env | cut -d= -f2)
@@ -64,3 +64,9 @@ test-auth:
 
 create-user:
 	docker compose run --rm web python /app/scripts/create_user.py
+
+backup-db:
+	./scripts/backup-postgres.sh
+
+restore-db:
+	./scripts/restore-postgres.sh

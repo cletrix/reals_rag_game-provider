@@ -219,7 +219,7 @@ class TestAuthEndpoints:
             "last_login_at": None
         }
         
-        with patch('main.get_user_by_email', return_value=mock_user):
+        with patch('db.get_user_by_email', return_value=mock_user):
             response = client.get(
                 "/api/auth/me",
                 headers={"Authorization": f"Bearer {token}"}
