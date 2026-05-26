@@ -12,7 +12,7 @@
 | # | Tarefa | Impacto | Status |
 |---|--------|---------|--------|
 | 1 | Refatorar `main.py` em `web/routers/` por domínio | Alto — 1000 linhas, 37 endpoints, inviabiliza testes | 🔴 Pendente |
-| 2 | Adicionar testes unitários (pytest) | Alto — zero cobertura atual | 🔴 Pendente |
+| 2 | Adicionar testes unitários (pytest) | Alto — zero cobertura atual | � Em andamento |
 | 3 | CI/CD com GitHub Actions | Médio — deploy manual atualmente | 🔴 Pendente |
 | 4 | Autenticação obrigatória nos endpoints | Alto — endpoints sem proteção JWT | ✅ Concluído |
 | 5 | Configuração por ambiente (`.env.dev` / `.env.prod`) | Médio — único `.env` para tudo | 🔴 Pendente |
@@ -41,19 +41,24 @@
 - [ ] Criar `web/middleware.py` com middlewares isolados
 - [ ] `main.py` deve ter apenas ~40 linhas (bootstrap)
 
-#### 🔴 P3. Falta de Testes Automatizados ⚠️
-> **Impacto:** Alto — zero cobertura, impossível validar mudanças com segurança
-- [ ] Adicionar pytest com testes unitários
-- [ ] Adicionar testes de integração para endpoints
+#### � P3. Testes Automatizados ⚠️
+> **Impacto:** Alto — testes unitários e de proteção JWT implementados; E2E pendente
+- [x] Adicionar pytest com testes unitários (auth, conversations, health, settings, folders, schemas)
+- [x] Testes de proteção JWT: todos os endpoints protegidos verificados com `test_protected_endpoints.py`
+- [x] `pytest.ini` configurado com coverage mínimo 60%
+- [x] Script `scripts/run_tests.sh` para rodar antes do deploy
+- [x] Serviço `test` no `docker-compose.yml` com profile `--profile test`
+- [ ] **Camada 1 — Pre-commit hook**: bloquear `git commit` se testes falharem (offline, instantâneo)
+- [ ] **Camada 2 — GitHub Actions CI**: rodar testes em todo push/PR, bloquear merge se CI falhar
+- [ ] Aumentar coverage para 80%
 - [ ] Adicionar Playwright/Cypress para E2E
-- [ ] Configurar coverage mínimo (80%)
 
 #### 🟠 P4. Falta de CI/CD ⚠️
 > **Impacto:** Médio — deploy manual, sem validação automática
-- [ ] Adicionar GitHub Actions para CI
-- [ ] Pipeline: test → build → deploy
+- [ ] **Criar `.github/workflows/ci.yml`**: pipeline test → build → deploy
+- [ ] Bloquear merge de PR sem CI verde (branch protection rules no GitHub)
 - [ ] Deploy automático para staging/produção
-- [ ] Configurar notificações de build
+- [ ] Configurar notificações de build (Slack/email em falha)
 
 #### 🟠 P5. Falta de Configuração por Ambiente ⚠️
 > **Impacto:** Médio — único `.env` para dev e prod, risco de vazamento de credenciais

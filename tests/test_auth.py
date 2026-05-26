@@ -280,12 +280,12 @@ class TestUserManagement:
         
         with patch('main.list_users', return_value=mock_users):
             response = client.get("/api/users")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert len(data) == 2
-            assert data[0]["email"] == "admin@empresa.com"
-            assert data[1]["email"] == "dev1@empresa.com"
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert data[0]["email"] == "admin@empresa.com"
+        assert data[1]["email"] == "dev1@empresa.com"
 
     def test_get_user_by_id(self, client):
         """Testa obter usuário por ID"""
@@ -303,17 +303,15 @@ class TestUserManagement:
         
         with patch('main.get_user_by_id', return_value=mock_user):
             response = client.get("/api/users/1")
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["email"] == "admin@empresa.com"
+        
+        assert response.status_code == 200
+        assert response.json()["email"] == "admin@empresa.com"
 
     def test_get_user_not_found(self, client):
         """Testa obter usuário não encontrado"""
         with patch('main.get_user_by_id', return_value=None):
             response = client.get("/api/users/1")
-            
-            assert response.status_code == 404
+        assert response.status_code == 404
 
     def test_update_user(self, client):
         """Testa atualizar usuário"""
@@ -337,11 +335,11 @@ class TestUserManagement:
         with patch('main.update_user', return_value=True):
             with patch('main.get_user_by_id', return_value=mock_user):
                 response = client.put("/api/users/1", json=update_data)
-                
-                assert response.status_code == 200
-                data = response.json()
-                assert data["email"] == "newemail@example.com"
-                assert data["name"] == "New Name"
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == "newemail@example.com"
+        assert data["name"] == "New Name"
 
     def test_update_user_password(self, client):
         """Testa atualizar senha do usuário"""
@@ -364,8 +362,8 @@ class TestUserManagement:
         with patch('main.update_user', return_value=True):
             with patch('main.get_user_by_id', return_value=mock_user):
                 response = client.put("/api/users/1", json=update_data)
-                
-                assert response.status_code == 200
+        
+        assert response.status_code == 200
 
 
 class TestLoginPage:

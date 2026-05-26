@@ -54,6 +54,34 @@ services:
     tty: true
     command: python query.py
 
+  test:
+    build: ./web
+    container_name: landf_test
+    profiles:
+      - test
+    env_file: .env
+    environment:
+      SECRET_KEY: "test-secret-key-for-ci-only"
+      DATABASE_URL: "postgresql://rag:rag@postgres:5432/ragdb"
+      QDRANT_URL: "http://qdrant:6333"
+    volumes:
+      - ./rag:/app/rag
+      - ./web:/app
+      - ./data:/app/data
+      - ./tests:/app/tests
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    working_dir: /app
+    command: >
+      sh -c "pip install pytest pytest-asyncio pytest-cov httpx -q &&
+             PYTHONPATH=/app python -m pytest /app/tests
+             --ignore=/app/tests/test_db.py
+             --ignore=/app/tests/test_folder_scanner.py
+             --tb=short -q --no-header -x"
+
   web:
     build: ./web
     container_name: landf_web

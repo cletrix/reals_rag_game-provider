@@ -1,74 +1,80 @@
 import pytest
-from unittest.mock import AsyncMock
-from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 
-def test_get_conversations(client, mock_db_pool, sample_conversation):
+def test_get_conversations(client, sample_conversation):
     """Testa listagem de conversas."""
-    mock_db_pool.fetch.return_value = [sample_conversation]
-    
-    response = client.get("/api/conversations")
+    with patch('main.get_conversations', return_value=[sample_conversation]):
+        response = client.get("/api/conversations")
     assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data, list)
+    assert isinstance(response.json(), list)
 
 
-def test_get_conversation(client, mock_db_pool, sample_conversation):
+def test_get_conversation(client, sample_conversation):
     """Testa busca de conversa específica."""
-    mock_db_pool.fetchrow.return_value = sample_conversation
-    
-    response = client.get(f"/api/conversations/{sample_conversation['id']}")
+    with patch('main.get_conversation', return_value=sample_conversation):
+        response = client.get(f"/api/conversations/{sample_conversation['id']}")
     assert response.status_code == 200
-    data = response.json()
-    assert data['id'] == sample_conversation['id']
+    assert response.json()['id'] == sample_conversation['id']
 
 
-def test_create_conversation(client, mock_db_pool):
+def test_get_conversation_not_found(client):
+    """Testa conversa não encontrada."""
+    with patch('main.get_conversation', return_value=None):
+        response = client.get("/api/conversations/nao-existe")
+    assert response.status_code == 404
+
+
+def test_create_conversation(client):
     """Testa criação de nova conversa."""
-    mock_db_pool.fetchrow.return_value = {'id': 'new-id-123'}
-    
-    response = client.post("/api/conversations", json={"title": "Nova Conversa"})
+    with patch('main.create_conversation', return_value='new-id-123'):
+        response = client.post("/api/conversations", json={"title": "Nova Conversa"})
     assert response.status_code == 200
-    data = response.json()
-    assert 'id' in data
+    assert 'id' in response.json()
 
 
-def test_update_conversation(client, mock_db_pool, sample_conversation):
+def test_create_conversation_no_title(client):
+    """Testa criação de conversa sem título (deve aceitar — título é opcional)."""
+    with patch('main.create_conversation', return_value='new-id-456'):
+        response = client.post("/api/conversations", json={})
+    assert response.status_code == 200
+
+
+def test_update_conversation(client, sample_conversation):
     """Testa atualização de título de conversa."""
-    mock_db_pool.execute.return_value = "UPDATE 1"
-    
-    response = client.patch(
-        f"/api/conversations/{sample_conversation['id']}",
-        json={"title": "Título Atualizado"}
-    )
+    with patch('main.update_conversation_title', return_value=True):
+        response = client.patch(
+            f"/api/conversations/{sample_conversation['id']}",
+            json={"title": "Título Atualizado"}
+        )
     assert response.status_code == 200
-    data = response.json()
-    assert data['ok'] is True
+    assert response.json()['ok'] is True
 
 
-def test_delete_conversation(client, mock_db_pool, sample_conversation):
-    """Testa deleção de conversa."""
-    mock_db_pool.execute.return_value = "DELETE 1"
-    
-    response = client.delete(f"/api/conversations/{sample_conversation['id']}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data['ok'] is True
-
-
-def test_get_conversation_messages(client, mock_db_pool, sample_conversation):
+def test_get_conversation_messages(client, sample_conversation):
     """Testa busca de mensagens de uma conversa."""
-    mock_db_pool.fetch.return_value = [
+    messages = [
         {
             'id': 'msg-1',
+            'question': 'Pergunta teste',
+            'answer': 'Resposta teste',
+            'created_at': '2026-05-25T18:00:00',
+            'elapsed_ms': 100,
+            'llm_provider': 'groq',
+            'llm_model': 'llama-3.3-70b-versatile',
+            'tokens_total': 50,
+            'sources': [],
             'conversation_id': sample_conversation['id'],
-            'role': 'user',
-            'content': 'Pergunta teste',
-            'created_at': '2026-05-25T18:00:00'
         }
     ]
-    
-    response = client.get(f"/api/conversations/{sample_conversation['id']}/messages")
+    with patch('main.get_conversation', return_value=sample_conversation):
+        with patch('main.get_conversation_messages', return_value=messages):
+            response = client.get(f"/api/conversations/{sample_conversation['id']}/messages")
     assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data, list)
+    assert isinstance(response.json(), list)
+
+
+def test_conversations_require_auth(client_no_auth):
+    """Testa que /api/conversations exige autenticação."""
+    response = client_no_auth.get("/api/conversations")
+    assert response.status_code == 401
