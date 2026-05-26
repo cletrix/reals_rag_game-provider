@@ -23,64 +23,83 @@
 
 **Status Atual:** ✅ Funcional, mas ❌ Ainda não Enterprise-ready
 
-### 10 Falhas Críticas Identificadas
+### 10 Falhas Críticas — Ordenadas por Prioridade
 
-#### 1. Falta de Testes Automatizados ⚠️
+> Ordenação por impacto real: Segurança → Estrutura de código → Qualidade → Operacional
+
+#### 🔴 P1. Falta de Autenticação e Autorização ⚠️
+> **Impacto:** Crítico — endpoints expostos sem proteção JWT obrigatória
+- [ ] Implementar OAuth2/LDAP
+- [x] Adicionar JWT tokens (infraestrutura criada, mas não obrigatória nas rotas)
+- [ ] Implementar RBAC por departamento
+- [ ] Configurar middleware de autenticação obrigatório em todas as rotas
+
+#### 🔴 P2. Refatoração de Estrutura (main.py) ⚠️
+> **Impacto:** Alto — 1000 linhas, 37 endpoints num único arquivo, inviabiliza testes e manutenção
+- [ ] Separar rotas em `web/routers/` por domínio (chat, auth, conversations, folders, health...)
+- [ ] Criar `web/middleware.py` com middlewares isolados
+- [ ] `main.py` deve ter apenas ~40 linhas (bootstrap)
+
+#### 🔴 P3. Falta de Testes Automatizados ⚠️
+> **Impacto:** Alto — zero cobertura, impossível validar mudanças com segurança
 - [ ] Adicionar pytest com testes unitários
 - [ ] Adicionar testes de integração para endpoints
 - [ ] Adicionar Playwright/Cypress para E2E
 - [ ] Configurar coverage mínimo (80%)
 
-#### 2. Falta de CI/CD ⚠️
+#### 🟠 P4. Falta de CI/CD ⚠️
+> **Impacto:** Médio — deploy manual, sem validação automática
 - [ ] Adicionar GitHub Actions para CI
 - [ ] Pipeline: test → build → deploy
 - [ ] Deploy automático para staging/produção
 - [ ] Configurar notificações de build
 
-#### 3. Falta de Autenticação e Autorização ⚠️
-- [ ] Implementar OAuth2/LDAP
-- [ ] Adicionar JWT tokens
-- [ ] Implementar RBAC por departamento
-- [ ] Configurar middleware de autenticação
-
-#### 4. Falta de Validação de Input ⚠️
-- [x] Adicionar Pydantic para validação
-- [x] Sanitizar inputs de usuário
-- [x] Adicionar rate limiting
-- [x] Validar tamanho de inputs
-
-#### 5. Falta de Logging Estruturado ⚠️
-- [x] Implementar logging estruturado (JSON)
-- [x] Adicionar integração com Loki/ELK
-- [ ] Configurar alertas baseados em logs
-- [x] Logar todas as ações críticas
-
-#### 6. Falta de Configuração por Ambiente ⚠️
+#### 🟠 P5. Falta de Configuração por Ambiente ⚠️
+> **Impacto:** Médio — único `.env` para dev e prod, risco de vazamento de credenciais
 - [ ] Criar .env.dev, .env.staging, .env.prod
 - [ ] Usar variáveis de ambiente por ambiente
 - [ ] Documentar configurações
 - [ ] Adicionar docker-compose.override.yml para dev
 
-#### 7. Falta de Health Checks Específicos ⚠️
+#### 🟠 P6. Falta de Tratamento de Erros Robusto ⚠️
+> **Impacto:** Médio — error handlers globais existem, mas faltam retries e exceções customizadas
+- [x] Implementar logging estruturado de erros
+- [x] Adicionar error handlers globais
+- [ ] Adicionar retry com exponential backoff
+- [ ] Criar exceções customizadas por domínio
+
+#### 🟡 P7. Falta de Validação de Input ⚠️
+> **Impacto:** Médio — maioria concluída, 2 endpoints ainda usam request.json() raw
+- [x] Adicionar Pydantic para validação
+- [x] Sanitizar inputs de usuário
+- [x] Adicionar rate limiting
+- [x] Validar tamanho de inputs
+- [ ] Corrigir `api_create_folder` e `api_update_folder` (ainda sem Pydantic)
+
+#### 🟡 P8. Falta de Logging Estruturado ⚠️
+> **Impacto:** Baixo — base implementada, falta configuração de alertas
+- [x] Implementar logging estruturado (JSON)
+- [x] Adicionar integração com Loki/ELK
+- [x] Logar todas as ações críticas
+- [ ] Configurar alertas baseados em logs
+
+#### 🟢 P9. Falta de Health Checks Específicos ⚠️
+> **Impacto:** Concluído ✅
 - [x] Adicionar endpoint /health
 - [x] Verificar dependências (Ollama, Qdrant)
 - [x] Adicionar /readiness e /liveness
 - [x] Configurar health checks no docker-compose
 
-#### 8. Falta de Documentação de API ⚠️
+#### 🟢 P10. Falta de Documentação de API ⚠️
+> **Impacto:** Concluído ✅
 - [x] Adicionar FastAPI automatic docs (/docs)
 - [x] Documentar todos os endpoints
 - [x] Adicionar exemplos de requests/responses
 - [x] Gerar OpenAPI spec
 - [x] Criar documento docs/api-documentation.md
 
-#### 9. Falta de Tratamento de Erros Robusto ⚠️
-- [x] Implementar logging estruturado de erros
-- [ ] Adicionar retry com exponential backoff
-- [ ] Criar exceções customizadas
-- [x] Adicionar error handlers globais
-
-#### 10. Falta de Backup Automatizado ⚠️
+#### 🟠 P11. Falta de Backup Automatizado ⚠️
+> **Impacto:** Alto para produção — sem backup, qualquer falha é perda de dados
 - [ ] Implementar scripts de backup
 - [ ] Configurar backup automatizado (cron)
 - [ ] Testar restore regularmente
