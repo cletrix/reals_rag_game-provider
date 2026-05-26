@@ -252,14 +252,27 @@ Implementar WAL archiving para:
 
 ## Conclusão
 
-**Problema resolvido:**
-- Graceful shutdown implementado
+**Status Atual:**
+- Graceful shutdown implementado (stop_grace_period: 60s)
 - Backup automático configurado
 - Script de recuperação criado
 - Procedimentos documentados
 
-**Produção segura:**
-- Nunca apagar dados em produção
-- Sempre ter backup recente
-- Monitorar saúde do banco
-- Ter procedimentos de emergência
+**Limitação Importante:**
+O graceful shutdown **reduz significativamente** a chance de corrupção, mas **não elimina 100%** o risco. Em casos extremos (falha de energia, kernel panic, etc.), o WAL ainda pode corromper.
+
+**Para desenvolvimento:**
+- O pg_resetwal pode ser usado para recuperar em caso de corrupção
+- Backup manual antes de operações de risco
+- Aceitável usar pg_resetwal se necessário
+
+**Para produção:**
+- **Nunca apagar dados em produção**
+- **Sempre ter backup recente automatizado**
+- **Replicação em tempo real é essencial** (veja TODO.md)
+- **Monitoramento contínuo da saúde do banco**
+- **Procedimentos de emergência documentados**
+- **Point-in-Time Recovery (PITR) para granularidade**
+
+**Recomendação Crítica:**
+Para produção, implementar replicação master-slave (planejado em TODO.md) para garantir zero data loss e alta disponibilidade.

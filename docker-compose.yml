@@ -30,7 +30,7 @@ services:
     ports:
       - "5432:5432"
     restart: unless-stopped
-    stop_grace_period: 30s
+    stop_grace_period: 60s
     stop_signal: SIGTERM
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rag -d ragdb"]
