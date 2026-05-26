@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 import sys
 import os
 
@@ -122,3 +122,20 @@ def sample_document():
         'created_at': '2026-05-25T18:00:00',
         'updated_at': '2026-05-25T18:00:00',
     }
+
+
+@pytest.fixture(autouse=True)
+def mock_llm_config():
+    """
+    Mock automático da configuração do LLM para evitar erros de credenciais.
+    Este fixture é aplicado automaticamente em todos os testes.
+    """
+    with patch.dict(os.environ, {
+        'GROQ_API_KEY': '',  # Vazio para forçar uso de Ollama mockado
+        'OLLAMA_BASE_URL': 'http://mock-ollama:11434',
+        'LLM_MODEL': 'qwen2.5:7b',
+        'EMBED_MODEL': 'bge-m3',
+    }):
+        # Mock do rag.config.configure para não inicializar LLM real
+        with patch('rag.config.configure'):
+            yield
