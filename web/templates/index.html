@@ -655,6 +655,7 @@
             if (r.status === 401) {
               localStorage.removeItem('auth_token');
               localStorage.removeItem('user_data');
+              alert('Sua sessão expirou. Por favor, faça login novamente.');
               window.location.href = '/login';
               throw new Error('Não autorizado');
             }
@@ -802,6 +803,10 @@
               }),
             });
 
+            if (!resp.ok) {
+              throw new Error(`Erro na requisição: ${resp.status} ${resp.statusText}`);
+            }
+
             const reader = resp.body.getReader();
             const decoder = new TextDecoder();
             let sources = [];
@@ -878,7 +883,7 @@
               id: Date.now(),
               role: 'assistant',
               content: '',
-              html: `<span class="text-red-400">Erro de conexão: ${e.message}</span>`,
+              html: `<span class="text-red-400">Erro de conexão: ${e.message || 'Sua sessão pode ter expirado. Por favor, recarregue a página e faça login novamente.'}</span>`,
               sources: [],
               elapsed_ms: null,
               llm_model: null,
