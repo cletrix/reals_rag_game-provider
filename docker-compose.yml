@@ -52,10 +52,10 @@ services:
     container_name: landf_rag
     env_file: .env
     environment:
-      LLM_MODEL: qwen2.5:7b-instruct
-      EMBED_MODEL: bge-m3
+      DATABASE_URL: "postgresql://rag:rag@postgres:5432/ragdb"
+      QDRANT_URL: "http://qdrant:6333"
       OLLAMA_BASE_URL: http://host.docker.internal:11434
-      LLM_PROVIDER: ollama
+      GROQ_API_KEY: ${GROQ_API_KEY}
     volumes:
       - ./data:/app/data
       - ./rag:/app/rag
