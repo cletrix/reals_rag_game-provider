@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Script para criar usuários no banco de dados
-Uso: docker compose run web python /app/scripts/create_user.py <email> <password> <name> <department> [role]
-Exemplo: docker compose run web python /app/scripts/create_user.py user@example.com senha123 "João Silva" TI admin
+Uso: docker compose run web python /app/scripts/create_user.py
 """
 import sys
 import os
@@ -73,39 +72,35 @@ async def main():
     print("=" * 60)
     print()
 
-    # Verificar se foram passados argumentos de linha de comando
-    if len(sys.argv) >= 5:
-        email = sys.argv[1].strip()
-        password = sys.argv[2].strip()
-        name = sys.argv[3].strip()
-        department = sys.argv[4].strip()
-        role = sys.argv[5].strip().lower() if len(sys.argv) >= 6 else "user"
-    else:
-        print("❌ Erro: Argumentos insuficientes")
-        print()
-        print("Uso: python create_user.py <email> <password> <name> <department> [role]")
-        print("Exemplo: python create_user.py user@example.com senha123 \"João Silva\" TI admin")
-        print()
-        print("Role opcional: admin ou user (padrão: user)")
-        sys.exit(1)
-
-    # Validações
+    # Coletar dados do usuário
+    email = input("Email: ").strip()
     if not email:
         print("❌ Email é obrigatório")
         sys.exit(1)
 
+    password = input("Senha: ").strip()
     if not password:
         print("❌ Senha é obrigatória")
         sys.exit(1)
 
+    password_confirm = input("Confirme a senha: ").strip()
+    if password != password_confirm:
+        print("❌ Senhas não conferem")
+        sys.exit(1)
+
+    name = input("Nome completo: ").strip()
     if not name:
         print("❌ Nome é obrigatório")
         sys.exit(1)
 
+    department = input("Departamento: ").strip()
     if not department:
         print("❌ Departamento é obrigatório")
         sys.exit(1)
 
+    role = input("Role [admin/user] (padrão: user): ").strip().lower()
+    if not role:
+        role = "user"
     if role not in ["admin", "user"]:
         print("❌ Role deve ser 'admin' ou 'user'")
         sys.exit(1)
@@ -118,6 +113,12 @@ async def main():
     print(f"  Role: {role}")
     print()
 
+    confirm = input("Confirmar criação? (s/n): ").strip().lower()
+    if confirm != 's':
+        print("❌ Operação cancelada")
+        sys.exit(0)
+
+    print()
     # Criar usuário
     success = await create_user(email, password, name, department, role)
     

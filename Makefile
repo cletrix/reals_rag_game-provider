@@ -64,10 +64,7 @@ test-auth:
 
 
 create-user:
-	@echo "Uso: make create-user EMAIL=... PASSWORD=... NAME=... DEPARTMENT=... [ROLE=...]"
-	@echo "Exemplo: make create-user EMAIL=user@example.com PASSWORD=senha123 NAME="João Silva" DEPARTMENT=TI ROLE=admin"
-	@if [ -z "$(EMAIL)" ] || [ -z "$(PASSWORD)" ] || [ -z "$(NAME)" ] || [ -z "$(DEPARTMENT)" ]; then echo "❌ Erro: EMAIL, PASSWORD, NAME e DEPARTMENT são obrigatórios"; exit 1; fi
-	docker compose run web python /app/scripts/create_user.py "$(EMAIL)" "$(PASSWORD)" "$(NAME)" "$(DEPARTMENT)" "$(ROLE)"
+	docker compose run -it web python /app/scripts/create_user.py
 
 fix-postgres:
 	docker compose stop postgres
