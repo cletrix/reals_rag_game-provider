@@ -1,11 +1,11 @@
-.PHONY: build rebuild index chat web web-bg run psql reset deploy deploy-full test test-cov test-docker test-auth create-user backup-db restore-db
+.PHONY: build rebuild index chat web web-bg run psql reset deploy deploy-full test test-cov test-docker test-auth create-user backup-db restore-db fix-postgres
 
 build:
 	ollama pull $$(grep EMBED_MODEL .env | cut -d= -f2)
 	ollama pull $$(grep LLM_MODEL   .env | cut -d= -f2)
 	docker compose up -d qdrant
 	docker compose build rag
-	docker compose run --rm rag python ingest.py
+	docker compose run rag python ingest.py
 
 rebuild:
 	docker compose build rag
@@ -13,11 +13,11 @@ rebuild:
 
 index:
 	docker compose up -d qdrant
-	docker compose run --rm rag python ingest.py
+	docker compose run rag python ingest.py
 
 chat:
 	docker compose up -d qdrant
-	docker compose run --rm -it rag
+	docker compose run -it rag
 
 web:
 	docker compose up -d qdrant postgres
@@ -56,15 +56,24 @@ test-cov:
 
 test-docker:
 	docker compose build web
-	docker compose run --rm web pytest /app/tests/ -v
+	docker compose run web pytest /app/tests/ -v
 
 test-auth:
 	docker compose build web
-	docker compose run --rm web pytest /app/tests/test_auth.py -v
+	docker compose run web pytest /app/tests/test_auth.py -v
+
 
 create-user:
-	docker compose run --rm web python /app/scripts/create_user.py
+	@echo "Uso: make create-user EMAIL=... PASSWORD=... NAME=... DEPARTMENT=... [ROLE=...]"
+	@echo "Exemplo: make create-user EMAIL=user@example.com PASSWORD=senha123 NAME="João Silva" DEPARTMENT=TI ROLE=admin"
+	@if [ -z "$(EMAIL)" ] || [ -z "$(PASSWORD)" ] || [ -z "$(NAME)" ] || [ -z "$(DEPARTMENT)" ]; then echo "❌ Erro: EMAIL, PASSWORD, NAME e DEPARTMENT são obrigatórios"; exit 1; fi
+	docker compose run web python /app/scripts/create_user.py "$(EMAIL)" "$(PASSWORD)" "$(NAME)" "$(DEPARTMENT)" "$(ROLE)"
 
+fix-postgres:
+	docker compose stop postgres
+	docker compose run --user postgres postgres pg_resetwal -f /var/lib/postgresql/data
+	docker compose up -d postgres
+	@echo "PostgreSQL recuperado com sucesso"
 backup-db:
 	./scripts/backup-postgres.sh
 

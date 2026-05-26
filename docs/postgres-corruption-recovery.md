@@ -257,14 +257,26 @@ Implementar WAL archiving para:
 - Backup automático configurado
 - Script de recuperação criado
 - Procedimentos documentados
+- PostgreSQL mudado de Alpine para imagem padrão (postgres:16)
 
 **Limitação Importante:**
-O graceful shutdown **reduz significativamente** a chance de corrupção, mas **não elimina 100%** o risco. Em casos extremos (falha de energia, kernel panic, etc.), o WAL ainda pode corromper.
+O graceful shutdown **não está funcionando** na versão do Docker Compose que você está usando. O Docker Compose não respeita o `stop_grace_period`, resultando em:
+- PostgreSQL sendo desligado abruptamente (SIGKILL em vez de SIGTERM)
+- WAL corrompendo consistentemente
+- Necessidade de usar `pg_resetwal` para recuperação
+
+**Causa Raiz:**
+A versão do Docker Compose que você está usando (que não suporta a flag `--rm`) provavelmente também não respeita o `stop_grace_period`. Isso foi confirmado pelos logs que mostram:
+```
+database system shutdown was interrupted
+database system was not properly shut down
+```
 
 **Para desenvolvimento:**
-- O pg_resetwal pode ser usado para recuperar em caso de corrupção
-- Backup manual antes de operações de risco
-- Aceitável usar pg_resetwal se necessário
+- O `make fix-postgres` recupera o banco sem apagar dados
+- O `make create-user` cria usuários com argumentos de linha de comando
+- Aceitável usar `pg_resetwal` se necessário
+- Nunca apagar o volume `postgres_data`
 
 **Para produção:**
 - **Nunca apagar dados em produção**
@@ -273,6 +285,7 @@ O graceful shutdown **reduz significativamente** a chance de corrupção, mas **
 - **Monitoramento contínuo da saúde do banco**
 - **Procedimentos de emergência documentados**
 - **Point-in-Time Recovery (PITR) para granularidade**
+- **Usar Docker Compose versão mais recente que suporte graceful shutdown corretamente**
 
 **Recomendação Crítica:**
 Para produção, implementar replicação master-slave (planejado em TODO.md) para garantir zero data loss e alta disponibilidade.
