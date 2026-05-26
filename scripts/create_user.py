@@ -9,6 +9,7 @@ import bcrypt
 import asyncpg
 from datetime import datetime
 from uuid import uuid4
+from getpass import getpass
 
 
 async def hash_password(password: str) -> str:
@@ -78,15 +79,18 @@ async def main():
         print("❌ Email é obrigatório")
         sys.exit(1)
 
-    password = input("Senha: ").strip()
-    if not password:
-        print("❌ Senha é obrigatória")
-        sys.exit(1)
+    # Loop para pedir senha até que as duas conferem
+    while True:
+        password = getpass("Senha: ").strip()
+        if not password:
+            print("❌ Senha é obrigatória")
+            continue
 
-    password_confirm = input("Confirme a senha: ").strip()
-    if password != password_confirm:
-        print("❌ Senhas não conferem")
-        sys.exit(1)
+        password_confirm = getpass("Confirme a senha: ").strip()
+        if password != password_confirm:
+            print("❌ Senhas não conferem. Tente novamente.")
+            continue
+        break
 
     name = input("Nome completo: ").strip()
     if not name:
