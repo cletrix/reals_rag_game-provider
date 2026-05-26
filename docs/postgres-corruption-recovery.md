@@ -277,6 +277,7 @@ database system was not properly shut down
 - O `make create-user` cria usuários com argumentos de linha de comando
 - Aceitável usar `pg_resetwal` se necessário
 - Nunca apagar o volume `postgres_data`
+- **Testes unitários funcionam sem apagar o banco** - usam mocks e fixtures
 
 **Para produção:**
 - **Nunca apagar dados em produção**

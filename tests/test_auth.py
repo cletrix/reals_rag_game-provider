@@ -205,41 +205,23 @@ class TestAuthEndpoints:
 
     def test_get_current_user(self, client):
         """Testa obter usuário atual"""
-        token = create_access_token({"sub": "admin@empresa.com", "user_id": "123"})
-        
-        mock_user = {
-            "id": "123",
-            "email": "admin@empresa.com",
-            "name": "Administrador",
-            "department": "TI",
-            "role": "admin",
-            "is_active": True,
-            "created_at": "2026-05-25T18:00:00+00:00",
-            "updated_at": "2026-05-25T18:00:00+00:00",
-            "last_login_at": None
-        }
-        
-        with patch('db.get_user_by_email', return_value=mock_user):
-            response = client.get(
-                "/api/auth/me",
-                headers={"Authorization": f"Bearer {token}"}
-            )
-            
-            assert response.status_code == 200
-            data = response.json()
-            assert data["email"] == "admin@empresa.com"
-            assert "password_hash" not in data
-
-    def test_get_current_user_no_token(self, client):
-        """Testa obter usuário atual sem token"""
         response = client.get("/api/auth/me")
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == "testuser@empresa.com"
+        assert "password_hash" not in data
+
+    def test_get_current_user_no_token(self, client_no_auth):
+        """Testa obter usuário atual sem token"""
+        response = client_no_auth.get("/api/auth/me")
         
         assert response.status_code == 401
         assert "Token não fornecido" in response.json()["message"]
 
-    def test_get_current_user_invalid_token(self, client):
+    def test_get_current_user_invalid_token(self, client_no_auth):
         """Testa obter usuário atual com token inválido"""
-        response = client.get(
+        response = client_no_auth.get(
             "/api/auth/me",
             headers={"Authorization": "Bearer invalid_token"}
         )
