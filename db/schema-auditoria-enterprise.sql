@@ -130,7 +130,7 @@ RETURNS TRIGGER AS $$
 BEGIN
     IF OLD.value IS DISTINCT FROM NEW.value THEN
         INSERT INTO settings_history (setting_key, old_value, new_value, changed_by, changed_by_email, reason)
-        VALUES (NEW.key, OLD.value, NEW.value, current_user_id(), current_user_email(), 'Configuration change');
+        VALUES (NEW.key, OLD.value, NEW.value, NULL, NULL, 'Configuration change');
     END IF;
     RETURN NEW;
 END;
