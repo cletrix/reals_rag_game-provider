@@ -6,6 +6,7 @@ import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
+from fastapi import Depends, HTTPException, Request
 
 # JWT configuration
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
@@ -44,3 +45,30 @@ def decode_access_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+def get_token_from_request(request: Request) -> str:
+    """Extrai o token Bearer do header Authorization."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token não fornecido")
+    return auth_header.split(" ")[1]
+
+
+async def get_current_user(request: Request) -> dict:
+    """
+    Dependência FastAPI: valida o token JWT e retorna o payload do usuário.
+
+    Uso: user = Depends(get_current_user)
+    """
+    from db import get_user_by_email  # import local para evitar circular
+    token = get_token_from_request(request)
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+    email = payload.get("sub")
+    user = await get_user_by_email(email)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    user.pop("password_hash", None)
+    return user

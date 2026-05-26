@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -251,16 +251,14 @@ async def api_get_conversations():
 
 
 @app.post("/api/conversations", response_model=ConversationDetail, tags=["Conversations"])
-async def api_create_conversation(request: Request):
+async def api_create_conversation(payload: ConversationUpdate):
     """
     Cria uma nova conversa.
 
     - **title**: Título opcional da conversa
     """
-    body = await request.json()
-    title = body.get("title")
-    conversation_id = await create_conversation(title)
-    return {"id": str(conversation_id), "title": title}
+    conversation_id = await create_conversation(payload.title)
+    return {"id": str(conversation_id), "title": payload.title}
 
 
 @app.get("/api/conversations/{conversation_id}", response_model=ConversationDetail, tags=["Conversations"])
@@ -295,16 +293,14 @@ async def api_get_conversation_messages(conversation_id: str):
 
 
 @app.patch("/api/conversations/{conversation_id}", tags=["Conversations"])
-async def api_update_conversation(conversation_id: str, request: Request):
+async def api_update_conversation(conversation_id: str, payload: ConversationUpdate):
     """
     Atualiza dados de uma conversa (título).
 
     - **conversation_id**: ID da conversa a ser atualizada
     """
-    body = await request.json()
-    title = body.get("title")
-    if title:
-        await update_conversation_title(conversation_id, title)
+    if payload.title:
+        await update_conversation_title(conversation_id, payload.title)
     return {"ok": True}
 
 
@@ -321,14 +317,13 @@ async def api_get_settings():
 
 
 @app.post("/api/settings", tags=["Settings"])
-async def api_update_settings(request: Request):
+async def api_update_settings(payload: SettingsUpdate):
     """
     Atualiza configurações do sistema.
 
     Aceita um objeto JSON com as chaves a serem atualizadas.
     """
-    body = await request.json()
-    for key, value in body.items():
+    for key, value in payload.model_dump(exclude_none=True).items():
         await update_setting(key, str(value))
     return {"ok": True}
 
@@ -365,8 +360,9 @@ async def _fetch_groq_usage() -> dict | None:
             )
             if r.status_code == 200:
                 return r.json()
-    except Exception:
-        pass
+            log.warning("Groq usage API retornou %s", r.status_code)
+    except Exception as exc:
+        log.warning("Falha ao consultar Groq usage: %s", str(exc))
     return None
 
 
@@ -503,7 +499,7 @@ async def api_files():
     """
     Retorna lista de arquivos indexados.
     """
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     files = await loop.run_in_executor(None, indexer.get_files)
     return files
 
@@ -528,20 +524,20 @@ async def api_upload(files: list[UploadFile] = File(...)):
     return {"saved": saved}
 
 
-@app.post("/api/files/{filename}/toggle")
+@app.post("/api/files/{filename}/toggle", tags=["Documents"])
 async def api_toggle_file(filename: str):
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, indexer.toggle_file, filename)
         return result
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado")
 
 
-@app.delete("/api/files/{filename}")
+@app.delete("/api/files/{filename}", tags=["Documents"])
 async def api_delete_file(filename: str):
     try:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, indexer.delete_file, filename)
         return result
     except FileNotFoundError:
@@ -914,32 +910,13 @@ async def login(login_data: UserLogin):
 
 
 @app.get("/api/auth/me", tags=["Auth"])
-async def get_current_user_info(request: Request):
+async def get_current_user_info(current_user: dict = Depends(auth.get_current_user)):
     """
     Retorna informações do usuário autenticado.
 
     Requer header Authorization: Bearer <token>
     """
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Token não fornecido")
-    
-    token = auth_header.split(" ")[1]
-    payload = auth.decode_access_token(token)
-    
-    if not payload:
-        raise HTTPException(status_code=401, detail="Token inválido ou expirado")
-    
-    email = payload.get("sub")
-    user = await get_user_by_email(email)
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="Usuário não encontrado")
-    
-    # Remove password_hash from response
-    user.pop("password_hash", None)
-    
-    return UserResponse(**user)
+    return UserResponse(**current_user)
 
 
 # --- User Management Endpoints ---

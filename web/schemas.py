@@ -171,8 +171,8 @@ class ConversationDetail(BaseModel):
     """Detalhes completos de uma conversa"""
     id: str = Field(description="ID único da conversa")
     title: Optional[str] = Field(default=None, description="Título da conversa")
-    created_at: str = Field(description="Timestamp de criação (ISO 8601)")
-    updated_at: str = Field(description="Timestamp de atualização (ISO 8601)")
+    created_at: Optional[str] = Field(default=None, description="Timestamp de criação (ISO 8601)")
+    updated_at: Optional[str] = Field(default=None, description="Timestamp de atualização (ISO 8601)")
     
     model_config = ConfigDict(
         json_schema_extra={

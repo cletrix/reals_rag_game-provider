@@ -1,3 +1,4 @@
+import datetime
 import os
 import json
 import asyncpg
@@ -365,7 +366,6 @@ async def create_document(
     mtime: float,
 ) -> UUID:
     """Cria um novo documento e retorna o ID."""
-    import datetime
     pool = await get_pool()
     # Converter timestamp float para datetime sem timezone
     mtime_dt = datetime.datetime.fromtimestamp(mtime)
@@ -384,7 +384,6 @@ async def create_document(
 
 async def get_documents(folder_id: str | None = None, limit: int = 100) -> list[dict]:
     """Retorna lista de documentos. Se folder_id fornecido, filtra por pasta."""
-    import datetime
     pool = await get_pool()
     if folder_id:
         rows = await pool.fetch(
@@ -522,6 +521,7 @@ async def get_auto_index_folders() -> list[dict]:
             item["indexed_at"] = item["indexed_at"].isoformat()
         if item.get("id"):
             item["id"] = str(item["id"])
+        result.append(item)
     return result
 
 
@@ -641,7 +641,7 @@ async def update_user(user_id: str, email: str | None = None,
     
     params.append(user_id)
     query = f"""UPDATE users
-                SET {', '.join(updates)}
+                SET {', '.join(updates)}, updated_at = NOW()
                 WHERE id = ${param_count}::uuid"""
     
     result = await pool.execute(query, *params)
