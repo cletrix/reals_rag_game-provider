@@ -73,7 +73,7 @@ async def main():
     print("=" * 60)
     print()
 
-    # Coletar dados do usuário
+    # Coletar dados do usuário interativamente
     email = input("Email: ").strip()
     if not email:
         print("❌ Email é obrigatório")
